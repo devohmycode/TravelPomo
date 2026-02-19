@@ -13,9 +13,10 @@ function getTime() {
 }
 
 export function FlipClock() {
-  const [time, setTime] = useState(getTime)
+  const [time, setTime] = useState<ReturnType<typeof getTime> | null>(null)
 
   useEffect(() => {
+    setTime(getTime())
     const interval = setInterval(() => {
       setTime(getTime())
     }, 1000)
@@ -26,9 +27,19 @@ export function FlipClock() {
   return (
     <main className="flip-clock-bg">
       <div className="flex flex-col items-center justify-center min-h-svh gap-4 sm:gap-6 py-8">
-        <FlipGroup value={time.hours} />
-        <FlipGroup value={time.minutes} />
-        <FlipGroup value={time.seconds} />
+        {time ? (
+          <>
+            <FlipGroup value={time.hours} />
+            <FlipGroup value={time.minutes} />
+            <FlipGroup value={time.seconds} />
+          </>
+        ) : (
+          <>
+            <FlipGroup value="00" />
+            <FlipGroup value="00" />
+            <FlipGroup value="00" />
+          </>
+        )}
       </div>
     </main>
   )
