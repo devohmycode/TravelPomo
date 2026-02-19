@@ -220,7 +220,7 @@
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
   transform-origin: bottom center;
-  animation: flip-top 0.6s ease-in forwards;
+  animation: flip-top 0.3s cubic-bezier(0.5, 0, 1, 0.5) forwards;
 }
 
 .flip-card-animated-top .flip-card-inner {
@@ -233,7 +233,7 @@
   border-top-left-radius: 0;
   border-top-right-radius: 0;
   transform-origin: top center;
-  animation: flip-bottom 0.6s ease-out forwards;
+  animation: flip-bottom 0.3s 0.3s cubic-bezier(0, 0.5, 0.5, 1) forwards;
   transform: rotateX(90deg);
 }
 

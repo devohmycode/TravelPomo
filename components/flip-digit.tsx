@@ -7,14 +7,21 @@ interface FlipDigitProps {
 }
 
 export function FlipDigit({ digit }: FlipDigitProps) {
-  const [currentDigit, setCurrentDigit] = useState(digit)
-  const [previousDigit, setPreviousDigit] = useState(digit)
+  const [displayDigit, setDisplayDigit] = useState(digit)
+  const [prevDigit, setPrevDigit] = useState(digit)
+  const [flipKey, setFlipKey] = useState(0)
   const [isFlipping, setIsFlipping] = useState(false)
   const timeoutRef = useRef<NodeJS.Timeout | null>(null)
+  const prevDigitProp = useRef(digit)
 
   useEffect(() => {
-    if (digit !== currentDigit) {
-      setPreviousDigit(currentDigit)
+    if (digit !== prevDigitProp.current) {
+      // Store the old digit for the animated flaps
+      setPrevDigit(prevDigitProp.current)
+      // Immediately update to the new digit for the static halves
+      setDisplayDigit(digit)
+      // Increment key to remount animated flaps and restart CSS animations
+      setFlipKey((k) => k + 1)
       setIsFlipping(true)
 
       if (timeoutRef.current) {
@@ -22,9 +29,10 @@ export function FlipDigit({ digit }: FlipDigitProps) {
       }
 
       timeoutRef.current = setTimeout(() => {
-        setCurrentDigit(digit)
         setIsFlipping(false)
       }, 600)
+
+      prevDigitProp.current = digit
     }
 
     return () => {
@@ -32,38 +40,38 @@ export function FlipDigit({ digit }: FlipDigitProps) {
         clearTimeout(timeoutRef.current)
       }
     }
-  }, [digit, currentDigit])
+  }, [digit])
 
   return (
-    <div className="flip-card-container" aria-label={digit}>
-      {/* Static bottom - shows new digit */}
-      <div className="flip-card-half flip-card-bottom">
-        <div className="flip-card-inner">
-          <span>{digit}</span>
-        </div>
-      </div>
-
-      {/* Static top - shows new digit */}
+    <div className="flip-card-container" aria-label={displayDigit} role="img">
+      {/* Static top half - always shows the NEW digit */}
       <div className="flip-card-half flip-card-top">
         <div className="flip-card-inner">
-          <span>{currentDigit}</span>
+          <span>{displayDigit}</span>
         </div>
       </div>
 
-      {/* Animated top flap - shows old digit, flips away */}
+      {/* Static bottom half - always shows the OLD digit (revealed as flap falls) */}
+      <div className="flip-card-half flip-card-bottom">
+        <div className="flip-card-inner">
+          <span>{isFlipping ? prevDigit : displayDigit}</span>
+        </div>
+      </div>
+
+      {/* Animated top flap - shows OLD digit, flips down and away */}
       {isFlipping && (
-        <div className="flip-card-animated flip-card-animated-top">
+        <div key={`top-${flipKey}`} className="flip-card-animated flip-card-animated-top">
           <div className="flip-card-inner">
-            <span>{previousDigit}</span>
+            <span>{prevDigit}</span>
           </div>
         </div>
       )}
 
-      {/* Animated bottom flap - shows new digit, flips in */}
+      {/* Animated bottom flap - shows NEW digit, flips down into place */}
       {isFlipping && (
-        <div className="flip-card-animated flip-card-animated-bottom">
+        <div key={`bottom-${flipKey}`} className="flip-card-animated flip-card-animated-bottom">
           <div className="flip-card-inner">
-            <span>{digit}</span>
+            <span>{displayDigit}</span>
           </div>
         </div>
       )}
