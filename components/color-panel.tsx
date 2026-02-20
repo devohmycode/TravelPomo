@@ -1,7 +1,7 @@
 "use client"
 
 type BackgroundType = "solid" | "linear" | "radial"
-type OverlayEffect = "none" | "frost" | "rain" | "flutes"
+type OverlayEffect = "none" | "frost" | "rain" | "snow" | "flutes"
 
 interface ThemeOption {
   a: string
@@ -174,8 +174,8 @@ export function ColorPanel({
 
       {/* Overlay Effects section */}
       <p className="text-white/80 text-sm font-semibold mb-2">Overlay Effects</p>
-      <div className="grid grid-cols-4 gap-2">
-        {(["none", "frost", "rain", "flutes"] as OverlayEffect[]).map((effect) => (
+      <div className="grid grid-cols-3 gap-2">
+        {(["none", "frost", "rain", "snow", "flutes"] as OverlayEffect[]).map((effect) => (
           <PillButton
             key={effect}
             label={effect.charAt(0).toUpperCase() + effect.slice(1)}

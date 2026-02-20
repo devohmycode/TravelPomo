@@ -6,6 +6,7 @@ import { FlipGroup } from "./flip-group"
 import { LiquidButton } from "./ui/liquid-glass-button"
 import { SettingsPanel } from "./settings-panel"
 import { RainCanvas } from "./rain-canvas"
+import { SnowCanvas } from "./snow-canvas"
 import {
   ColorPanel,
   THEMES,
@@ -225,6 +226,7 @@ export function FlipClock() {
         />
       )}
       {overlay === "rain" && <RainCanvas />}
+      {overlay === "snow" && <SnowCanvas />}
       {overlay === "flutes" && (
         <div
           className="absolute inset-0 pointer-events-none"
