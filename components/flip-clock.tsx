@@ -36,7 +36,7 @@ export function FlipClock() {
 
   return (
     <main className="flip-clock-bg relative">
-      <div className="flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8 pb-24">
+      <div className="flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8">
         {time ? (
           <>
             <FlipGroup value={time.hours} />
@@ -52,14 +52,14 @@ export function FlipClock() {
         )}
       </div>
 
-      <div className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom,1.5rem))] inset-x-0 z-50 flex justify-center">
+      <div className="absolute bottom-8 sm:bottom-10 right-6 sm:right-8 z-50">
         <LiquidButton
           size="icon"
           onClick={handleFullscreen}
           aria-label="Plein ecran"
-          className="rounded-full size-14"
+          className="rounded-full size-12 sm:size-14"
         >
-          <Maximize className="size-5 text-white/80" />
+          <Maximize className="size-4 sm:size-5 text-white/80" />
         </LiquidButton>
       </div>
     </main>
