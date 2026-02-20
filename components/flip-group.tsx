@@ -10,7 +10,7 @@ export function FlipGroup({ value }: FlipGroupProps) {
   const digits = value.padStart(2, "0").split("")
 
   return (
-    <div className="flex gap-2 sm:gap-3">
+    <div className="flex gap-3 sm:gap-4">
       <FlipDigit digit={digits[0]} />
       <FlipDigit digit={digits[1]} />
     </div>

@@ -36,7 +36,7 @@ export function FlipClock() {
 
   return (
     <main className="flip-clock-bg relative">
-      <div className="flex flex-col items-center justify-center min-h-svh gap-4 sm:gap-6 py-8 pb-24">
+      <div className="flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8 pb-24">
         {time ? (
           <>
             <FlipGroup value={time.hours} />
