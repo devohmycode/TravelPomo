@@ -131,62 +131,8 @@
   overflow: hidden;
 }
 
-.flip-clock-bg::before {
-  content: "";
-  position: absolute;
-  inset: 0;
-  z-index: 0;
-  background: linear-gradient(
-    135deg,
-    var(--bg-a) 0%,
-    var(--bg-b) 100%
-  );
-  animation: bg-swap 8s ease-in-out infinite;
-  transition: --bg-a 0.8s ease, --bg-b 0.8s ease;
-}
-
 .flip-clock-bg > * {
   position: relative;
-  z-index: 1;
-}
-
-@property --bg-a {
-  syntax: "<color>";
-  inherits: true;
-  initial-value: #1a3a5c;
-}
-
-@property --bg-b {
-  syntax: "<color>";
-  inherits: true;
-  initial-value: #e8a830;
-}
-
-@property --theme-a {
-  syntax: "<color>";
-  inherits: true;
-  initial-value: #1a3a5c;
-}
-
-@property --theme-b {
-  syntax: "<color>";
-  inherits: true;
-  initial-value: #e8a830;
-}
-
-@keyframes bg-swap {
-  0% {
-    --bg-a: var(--theme-a);
-    --bg-b: var(--theme-b);
-  }
-  50% {
-    --bg-a: var(--theme-b);
-    --bg-b: var(--theme-a);
-  }
-  100% {
-    --bg-a: var(--theme-a);
-    --bg-b: var(--theme-b);
-  }
 }
 
 /* Flip Card */

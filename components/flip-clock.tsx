@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Maximize, Palette } from "lucide-react"
 import { FlipGroup } from "./flip-group"
 import { LiquidButton } from "./ui/liquid-glass-button"
@@ -14,6 +14,24 @@ const COLOR_THEMES = [
   { a: "#134e4a", b: "#fbbf24", label: "Emeraude & Dore" },
 ] as const
 
+function hexToRgb(hex: string) {
+  const r = parseInt(hex.slice(1, 3), 16)
+  const g = parseInt(hex.slice(3, 5), 16)
+  const b = parseInt(hex.slice(5, 7), 16)
+  return { r, g, b }
+}
+
+function lerpColor(
+  c1: { r: number; g: number; b: number },
+  c2: { r: number; g: number; b: number },
+  t: number
+) {
+  const r = Math.round(c1.r + (c2.r - c1.r) * t)
+  const g = Math.round(c1.g + (c2.g - c1.g) * t)
+  const b = Math.round(c1.b + (c2.b - c1.b) * t)
+  return `rgb(${r},${g},${b})`
+}
+
 function getTime() {
   const now = new Date()
   return {
@@ -26,15 +44,43 @@ function getTime() {
 export function FlipClock() {
   const [time, setTime] = useState<ReturnType<typeof getTime> | null>(null)
   const [themeIndex, setThemeIndex] = useState(0)
+  const bgRef = useRef<HTMLDivElement>(null)
+  const rafRef = useRef<number>(0)
 
   const theme = COLOR_THEMES[themeIndex]
+  const themeRef = useRef(theme)
+  themeRef.current = theme
+
+  // Animate the background gradient with JS
+  const animateBg = useCallback(() => {
+    const el = bgRef.current
+    if (!el) return
+
+    const CYCLE = 8000
+    const t = (Date.now() % CYCLE) / CYCLE
+    // Sine wave 0->1->0 for smooth back-and-forth
+    const mix = (Math.sin(t * Math.PI * 2 - Math.PI / 2) + 1) / 2
+
+    const colorA = hexToRgb(themeRef.current.a)
+    const colorB = hexToRgb(themeRef.current.b)
+
+    const startColor = lerpColor(colorA, colorB, mix)
+    const endColor = lerpColor(colorB, colorA, mix)
+
+    el.style.background = `linear-gradient(135deg, ${startColor} 0%, ${endColor} 100%)`
+    rafRef.current = requestAnimationFrame(animateBg)
+  }, [])
+
+  useEffect(() => {
+    rafRef.current = requestAnimationFrame(animateBg)
+    return () => cancelAnimationFrame(rafRef.current)
+  }, [animateBg])
 
   useEffect(() => {
     setTime(getTime())
     const interval = setInterval(() => {
       setTime(getTime())
     }, 1000)
-
     return () => clearInterval(interval)
   }, [])
 
@@ -51,16 +97,9 @@ export function FlipClock() {
   }
 
   return (
-    <main
-      className="flip-clock-bg relative"
-      style={
-        {
-          "--theme-a": theme.a,
-          "--theme-b": theme.b,
-        } as React.CSSProperties
-      }
-    >
-      <div className="flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8">
+    <main className="flip-clock-bg relative">
+      <div ref={bgRef} className="absolute inset-0 z-0 transition-colors duration-700" />
+      <div className="relative z-1 flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8">
         {time ? (
           <>
             <FlipGroup value={time.hours} />
