@@ -1,7 +1,9 @@
 "use client"
 
 import { useEffect, useState } from "react"
+import { Maximize } from "lucide-react"
 import { FlipGroup } from "./flip-group"
+import { LiquidButton } from "./ui/liquid-glass-button"
 
 function getTime() {
   const now = new Date()
@@ -24,9 +26,17 @@ export function FlipClock() {
     return () => clearInterval(interval)
   }, [])
 
+  const handleFullscreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen()
+    } else {
+      document.documentElement.requestFullscreen()
+    }
+  }
+
   return (
-    <main className="flip-clock-bg">
-      <div className="flex flex-col items-center justify-center min-h-svh gap-4 sm:gap-6 py-8">
+    <main className="flip-clock-bg relative">
+      <div className="flex flex-col items-center justify-center min-h-svh gap-4 sm:gap-6 py-8 pb-24">
         {time ? (
           <>
             <FlipGroup value={time.hours} />
@@ -40,6 +50,17 @@ export function FlipClock() {
             <FlipGroup value="00" />
           </>
         )}
+      </div>
+
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <LiquidButton
+          size="icon"
+          onClick={handleFullscreen}
+          aria-label="Plein ecran"
+          className="rounded-full size-14"
+        >
+          <Maximize className="size-5 text-white/80" />
+        </LiquidButton>
       </div>
     </main>
   )
