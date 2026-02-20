@@ -97,9 +97,9 @@ export function FlipClock() {
   }
 
   return (
-    <main className="flip-clock-bg relative">
-      <div ref={bgRef} className="absolute inset-0 z-0 transition-colors duration-700" />
-      <div className="relative z-1 flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8">
+    <main className="relative min-h-svh overflow-hidden">
+      <div ref={bgRef} className="absolute inset-0" style={{ zIndex: 0 }} />
+      <div className="relative flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8" style={{ zIndex: 1 }}>
         {time ? (
           <>
             <FlipGroup value={time.hours} />
@@ -115,7 +115,7 @@ export function FlipClock() {
         )}
       </div>
 
-      <div className="absolute bottom-[12%] sm:bottom-[10%] inset-x-0 z-50 flex justify-center gap-4">
+      <div className="absolute bottom-[12%] sm:bottom-[10%] inset-x-0 flex justify-center gap-4" style={{ zIndex: 2 }}>
         <LiquidButton
           size="icon"
           onClick={cycleTheme}

@@ -124,17 +124,6 @@
   }
 }
 
-/* Flip Clock Background */
-.flip-clock-bg {
-  min-height: 100svh;
-  position: relative;
-  overflow: hidden;
-}
-
-.flip-clock-bg > * {
-  position: relative;
-}
-
 /* Flip Card */
 .flip-card-container {
   position: relative;
