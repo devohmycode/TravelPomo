@@ -279,3 +279,24 @@
     transform: rotateX(0deg);
   }
 }
+
+/* Rain overlay effect */
+.rain-overlay {
+  background-image:
+    radial-gradient(1px 1px at 10% 20%, rgba(255,255,255,0.3) 50%, transparent 50%),
+    radial-gradient(1px 1px at 30% 50%, rgba(255,255,255,0.25) 50%, transparent 50%),
+    radial-gradient(1px 1px at 50% 10%, rgba(255,255,255,0.2) 50%, transparent 50%),
+    radial-gradient(1px 1px at 70% 70%, rgba(255,255,255,0.3) 50%, transparent 50%),
+    radial-gradient(1px 1px at 90% 30%, rgba(255,255,255,0.2) 50%, transparent 50%);
+  background-size: 120px 180px;
+  animation: rain-fall 0.8s linear infinite;
+}
+
+@keyframes rain-fall {
+  0% {
+    background-position: 0 0;
+  }
+  100% {
+    background-position: -20px 180px;
+  }
+}

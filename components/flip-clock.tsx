@@ -1,19 +1,16 @@
 "use client"
 
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Maximize, Palette, Timer, Settings } from "lucide-react"
+import { Maximize, Timer, Settings, Droplets } from "lucide-react"
 import { FlipGroup } from "./flip-group"
 import { LiquidButton } from "./ui/liquid-glass-button"
 import { SettingsPanel } from "./settings-panel"
-
-const COLOR_THEMES = [
-  { a: "#1a3a5c", b: "#e8a830", label: "Bleu & Ambre" },
-  { a: "#5c1a2a", b: "#e8a830", label: "Bordeaux & Or" },
-  { a: "#0f3460", b: "#e94560", label: "Nuit & Corail" },
-  { a: "#1a1a2e", b: "#00d2ff", label: "Sombre & Cyan" },
-  { a: "#2d1b69", b: "#f97316", label: "Indigo & Orange" },
-  { a: "#134e4a", b: "#fbbf24", label: "Emeraude & Dore" },
-] as const
+import {
+  ColorPanel,
+  THEMES,
+  type BackgroundType,
+  type OverlayEffect,
+} from "./color-panel"
 
 type Mode = "clock" | "pomo" | "stopwatch"
 
@@ -62,13 +59,20 @@ export function FlipClock() {
   const [use24Hour, setUse24Hour] = useState(true)
   const [showSeconds, setShowSeconds] = useState(true)
   const [showSettings, setShowSettings] = useState(false)
+  const [showColorPanel, setShowColorPanel] = useState(false)
   const [themeIndex, setThemeIndex] = useState(0)
+  const [bgType, setBgType] = useState<BackgroundType>("linear")
+  const [overlay, setOverlay] = useState<OverlayEffect>("none")
 
   // Clock state
-  const [time, setTime] = useState<{ hours: string; minutes: string; seconds: string } | null>(null)
+  const [time, setTime] = useState<{
+    hours: string
+    minutes: string
+    seconds: string
+  } | null>(null)
 
   // Pomodoro state
-  const [pomoRemaining, setPomoRemaining] = useState(25 * 60) // 25 min
+  const [pomoRemaining, setPomoRemaining] = useState(25 * 60)
   const [pomoRunning, setPomoRunning] = useState(false)
 
   // Stopwatch state
@@ -78,9 +82,11 @@ export function FlipClock() {
   // Background animation
   const bgRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number>(0)
-  const theme = COLOR_THEMES[themeIndex]
+  const theme = THEMES[themeIndex]
   const themeRef = useRef(theme)
+  const bgTypeRef = useRef(bgType)
   themeRef.current = theme
+  bgTypeRef.current = bgType
 
   const animateBg = useCallback(() => {
     const el = bgRef.current
@@ -90,9 +96,17 @@ export function FlipClock() {
     const mix = (Math.sin(t * Math.PI * 2 - Math.PI / 2) + 1) / 2
     const colorA = hexToRgb(themeRef.current.a)
     const colorB = hexToRgb(themeRef.current.b)
-    const startColor = lerpColor(colorA, colorB, mix)
-    const endColor = lerpColor(colorB, colorA, mix)
-    el.style.background = `linear-gradient(135deg, ${startColor} 0%, ${endColor} 100%)`
+    const c1 = lerpColor(colorA, colorB, mix)
+    const c2 = lerpColor(colorB, colorA, mix)
+
+    const currentBgType = bgTypeRef.current
+    if (currentBgType === "solid") {
+      el.style.background = c1
+    } else if (currentBgType === "radial") {
+      el.style.background = `radial-gradient(circle at 50% 50%, ${c2} 0%, ${c1} 100%)`
+    } else {
+      el.style.background = `linear-gradient(135deg, ${c1} 0%, ${c2} 100%)`
+    }
     rafRef.current = requestAnimationFrame(animateBg)
   }, [])
 
@@ -142,10 +156,6 @@ export function FlipClock() {
     }
   }
 
-  const cycleTheme = () => {
-    setThemeIndex((prev) => (prev + 1) % COLOR_THEMES.length)
-  }
-
   const handleModeChange = (newMode: Mode) => {
     setMode(newMode)
     if (newMode === "pomo") {
@@ -178,19 +188,57 @@ export function FlipClock() {
   }
 
   const handleTimerTap = () => {
-    if (mode === "pomo") {
-      setPomoRunning((r) => !r)
-    } else if (mode === "stopwatch") {
-      setSwRunning((r) => !r)
-    }
+    if (mode === "pomo") setPomoRunning((r) => !r)
+    else if (mode === "stopwatch") setSwRunning((r) => !r)
   }
 
   const isTimerActive =
     (mode === "pomo" && pomoRunning) || (mode === "stopwatch" && swRunning)
 
+  const togglePanel = (panel: "settings" | "color") => {
+    if (panel === "settings") {
+      setShowSettings((s) => !s)
+      if (!showSettings) setShowColorPanel(false)
+    } else {
+      setShowColorPanel((s) => !s)
+      if (!showColorPanel) setShowSettings(false)
+    }
+  }
+
   return (
     <main className="relative min-h-svh overflow-hidden">
+      {/* Animated background */}
       <div ref={bgRef} className="absolute inset-0" style={{ zIndex: 0 }} />
+
+      {/* Overlay effects */}
+      {overlay === "frost" && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            zIndex: 0,
+            backdropFilter: "blur(2px) brightness(1.05)",
+            WebkitBackdropFilter: "blur(2px) brightness(1.05)",
+            background:
+              "repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(255,255,255,0.03) 2px, rgba(255,255,255,0.03) 4px)",
+          }}
+        />
+      )}
+      {overlay === "rain" && (
+        <div
+          className="absolute inset-0 pointer-events-none rain-overlay"
+          style={{ zIndex: 0 }}
+        />
+      )}
+      {overlay === "flutes" && (
+        <div
+          className="absolute inset-0 pointer-events-none"
+          style={{
+            zIndex: 0,
+            background:
+              "repeating-linear-gradient(90deg, transparent, transparent 8px, rgba(255,255,255,0.04) 8px, rgba(255,255,255,0.04) 10px)",
+          }}
+        />
+      )}
 
       {/* Clock display */}
       <div
@@ -222,43 +270,74 @@ export function FlipClock() {
         </div>
       )}
 
+      {/* Color panel */}
+      {showColorPanel && (
+        <div
+          className="absolute inset-x-0 flex justify-center px-4"
+          style={{ zIndex: 10, bottom: "18%" }}
+        >
+          <ColorPanel
+            activeThemeIndex={themeIndex}
+            onThemeChange={setThemeIndex}
+            backgroundType={bgType}
+            onBackgroundTypeChange={setBgType}
+            overlayEffect={overlay}
+            onOverlayEffectChange={setOverlay}
+            onClose={() => setShowColorPanel(false)}
+          />
+        </div>
+      )}
+
       {/* Buttons */}
       <div
         className="absolute bottom-[8%] sm:bottom-[6%] inset-x-0 flex justify-center gap-3"
         style={{ zIndex: 11 }}
       >
-        {/* Timer play/pause (only in pomo/stopwatch) */}
         {mode !== "clock" && (
           <LiquidButton
             size="icon"
             onClick={handleTimerTap}
             aria-label={isTimerActive ? "Pause" : "Demarrer"}
             className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
-              isTimerActive ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent" : ""
+              isTimerActive
+                ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
+                : ""
             }`}
           >
-            <Timer className={`size-4 sm:size-5 ${isTimerActive ? "text-white" : "text-white/80"}`} />
+            <Timer
+              className={`size-4 sm:size-5 ${isTimerActive ? "text-white" : "text-white/80"}`}
+            />
           </LiquidButton>
         )}
 
         <LiquidButton
           size="icon"
-          onClick={() => setShowSettings((s) => !s)}
+          onClick={() => togglePanel("settings")}
           aria-label="Parametres"
           className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
-            showSettings ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent" : ""
+            showSettings
+              ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
+              : ""
           }`}
         >
-          <Settings className={`size-4 sm:size-5 ${showSettings ? "text-white" : "text-white/80"}`} />
+          <Settings
+            className={`size-4 sm:size-5 ${showSettings ? "text-white" : "text-white/80"}`}
+          />
         </LiquidButton>
 
         <LiquidButton
           size="icon"
-          onClick={cycleTheme}
-          aria-label="Changer les couleurs"
-          className="rounded-full size-12 sm:size-14"
+          onClick={() => togglePanel("color")}
+          aria-label="Couleurs"
+          className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
+            showColorPanel
+              ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
+              : ""
+          }`}
         >
-          <Palette className="size-4 sm:size-5 text-white/80" />
+          <Droplets
+            className={`size-4 sm:size-5 ${showColorPanel ? "text-white" : "text-white/80"}`}
+          />
         </LiquidButton>
 
         <LiquidButton
