@@ -52,7 +52,7 @@ export function FlipClock() {
         )}
       </div>
 
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+      <div className="fixed bottom-[max(1.5rem,env(safe-area-inset-bottom,1.5rem))] inset-x-0 z-50 flex justify-center">
         <LiquidButton
           size="icon"
           onClick={handleFullscreen}
