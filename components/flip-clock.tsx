@@ -5,6 +5,7 @@ import { Maximize, Timer, Settings, Droplets } from "lucide-react"
 import { FlipGroup } from "./flip-group"
 import { LiquidButton } from "./ui/liquid-glass-button"
 import { SettingsPanel } from "./settings-panel"
+import { RainCanvas } from "./rain-canvas"
 import {
   ColorPanel,
   THEMES,
@@ -223,12 +224,7 @@ export function FlipClock() {
           }}
         />
       )}
-      {overlay === "rain" && (
-        <div
-          className="absolute inset-0 pointer-events-none rain-overlay"
-          style={{ zIndex: 0 }}
-        />
-      )}
+      {overlay === "rain" && <RainCanvas />}
       {overlay === "flutes" && (
         <div
           className="absolute inset-0 pointer-events-none"
