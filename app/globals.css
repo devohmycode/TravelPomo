@@ -134,17 +134,20 @@
 .flip-clock-bg::before {
   content: "";
   position: absolute;
-  inset: 0;
+  inset: -50%;
+  width: 200%;
+  height: 200%;
   z-index: 0;
-  background: linear-gradient(
-    135deg,
-    var(--grad-c1) 0%,
-    var(--grad-c2) 25%,
-    var(--grad-c3) 50%,
-    var(--grad-c4) 75%,
-    var(--grad-c5) 100%
-  );
-  animation: gradient-shift 12s ease infinite;
+  background:
+    radial-gradient(ellipse at 20% 50%, var(--grad-c1) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 20%, var(--grad-c2) 0%, transparent 50%),
+    radial-gradient(ellipse at 50% 80%, var(--grad-c3) 0%, transparent 50%),
+    radial-gradient(ellipse at 10% 10%, var(--grad-c4) 0%, transparent 40%),
+    radial-gradient(ellipse at 90% 90%, var(--grad-c5) 0%, transparent 40%),
+    linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+  animation:
+    gradient-move 20s ease-in-out infinite alternate,
+    gradient-shift 16s ease infinite;
 }
 
 .flip-clock-bg > * {
@@ -155,12 +158,12 @@
 @property --grad-c1 {
   syntax: "<color>";
   inherits: false;
-  initial-value: #1a3a5c;
+  initial-value: #c4882a;
 }
 @property --grad-c2 {
   syntax: "<color>";
   inherits: false;
-  initial-value: #c4882a;
+  initial-value: #e87850;
 }
 @property --grad-c3 {
   syntax: "<color>";
@@ -170,49 +173,67 @@
 @property --grad-c4 {
   syntax: "<color>";
   inherits: false;
-  initial-value: #c4882a;
+  initial-value: #8b4a14;
 }
 @property --grad-c5 {
   syntax: "<color>";
   inherits: false;
-  initial-value: #1a3a5c;
+  initial-value: #5c3a1a;
+}
+
+@keyframes gradient-move {
+  0% {
+    transform: translate(0%, 0%) rotate(0deg) scale(1);
+  }
+  25% {
+    transform: translate(10%, -5%) rotate(3deg) scale(1.05);
+  }
+  50% {
+    transform: translate(-5%, 10%) rotate(-2deg) scale(1.02);
+  }
+  75% {
+    transform: translate(5%, 5%) rotate(1deg) scale(1.08);
+  }
+  100% {
+    transform: translate(-10%, -10%) rotate(-3deg) scale(1.04);
+  }
 }
 
 @keyframes gradient-shift {
   0%, 100% {
-    --grad-c1: #1a3a5c;
-    --grad-c2: #c4882a;
+    --grad-c1: #c4882a;
+    --grad-c2: #e87850;
     --grad-c3: #e8a830;
-    --grad-c4: #c4882a;
-    --grad-c5: #1a3a5c;
-  }
-  20% {
-    --grad-c1: #5c1a2a;
-    --grad-c2: #c44a2a;
-    --grad-c3: #e86830;
-    --grad-c4: #f0a050;
+    --grad-c4: #8b4a14;
     --grad-c5: #5c3a1a;
   }
+  20% {
+    --grad-c1: #e86040;
+    --grad-c2: #c43a20;
+    --grad-c3: #f0a050;
+    --grad-c4: #5c1a2a;
+    --grad-c5: #8b2a14;
+  }
   40% {
-    --grad-c1: #2a1a5c;
-    --grad-c2: #8b3a80;
-    --grad-c3: #c45a8a;
-    --grad-c4: #e88a60;
-    --grad-c5: #3a1a5c;
+    --grad-c1: #8b3a80;
+    --grad-c2: #c45a8a;
+    --grad-c3: #e88a60;
+    --grad-c4: #3a1a5c;
+    --grad-c5: #5c2a50;
   }
   60% {
-    --grad-c1: #1a4a3c;
-    --grad-c2: #2a8b6a;
-    --grad-c3: #50c4a0;
-    --grad-c4: #a0e8c0;
-    --grad-c5: #1a5c3a;
+    --grad-c1: #2a8b6a;
+    --grad-c2: #50c4a0;
+    --grad-c3: #1a5c3a;
+    --grad-c4: #1a4a3c;
+    --grad-c5: #40a080;
   }
   80% {
-    --grad-c1: #3a1a1a;
-    --grad-c2: #8b4a14;
-    --grad-c3: #c48828;
-    --grad-c4: #e8c040;
-    --grad-c5: #5c4a1a;
+    --grad-c1: #8b6a14;
+    --grad-c2: #c49828;
+    --grad-c3: #e8c040;
+    --grad-c4: #3a2a1a;
+    --grad-c5: #c47020;
   }
 }
 
