@@ -2,6 +2,7 @@
 
 type BackgroundType = "solid" | "linear" | "radial"
 type OverlayEffect = "none" | "frost" | "rain" | "snow" | "flutes"
+type GlowMode = "rotate" | "pulse" | "breathe" | "colorShift" | "flowHorizontal" | "static"
 
 interface ThemeOption {
   a: string
@@ -25,6 +26,10 @@ interface ColorPanelProps {
   onBackgroundTypeChange: (type: BackgroundType) => void
   overlayEffect: OverlayEffect
   onOverlayEffectChange: (effect: OverlayEffect) => void
+  glowEnabled: boolean
+  onGlowEnabledChange: (enabled: boolean) => void
+  glowMode: GlowMode
+  onGlowModeChange: (mode: GlowMode) => void
   onClose: () => void
 }
 
@@ -120,6 +125,15 @@ function BgPreview({
   )
 }
 
+const GLOW_MODES: { value: GlowMode; label: string }[] = [
+  { value: "rotate", label: "Rotate" },
+  { value: "pulse", label: "Pulse" },
+  { value: "breathe", label: "Breathe" },
+  { value: "colorShift", label: "Shift" },
+  { value: "flowHorizontal", label: "Flow" },
+  { value: "static", label: "Static" },
+]
+
 export function ColorPanel({
   activeThemeIndex,
   onThemeChange,
@@ -127,6 +141,10 @@ export function ColorPanel({
   onBackgroundTypeChange,
   overlayEffect,
   onOverlayEffectChange,
+  glowEnabled,
+  onGlowEnabledChange,
+  glowMode,
+  onGlowModeChange,
   onClose,
 }: ColorPanelProps) {
   const currentTheme = THEMES[activeThemeIndex] || THEMES[0]
@@ -174,7 +192,7 @@ export function ColorPanel({
 
       {/* Overlay Effects section */}
       <p className="text-white/80 text-sm font-semibold mb-2">Overlay Effects</p>
-      <div className="grid grid-cols-3 gap-2">
+      <div className="grid grid-cols-3 gap-2 mb-5">
         {(["none", "frost", "rain", "snow", "flutes"] as OverlayEffect[]).map((effect) => (
           <PillButton
             key={effect}
@@ -184,9 +202,36 @@ export function ColorPanel({
           />
         ))}
       </div>
+
+      {/* Glow Effect section */}
+      <p className="text-white/80 text-sm font-semibold mb-2">Glow Effect</p>
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <PillButton
+          label="Off"
+          active={!glowEnabled}
+          onClick={() => onGlowEnabledChange(false)}
+        />
+        <PillButton
+          label="On"
+          active={glowEnabled}
+          onClick={() => onGlowEnabledChange(true)}
+        />
+      </div>
+      {glowEnabled && (
+        <div className="grid grid-cols-3 gap-2">
+          {GLOW_MODES.map((m) => (
+            <PillButton
+              key={m.value}
+              label={m.label}
+              active={glowMode === m.value}
+              onClick={() => onGlowModeChange(m.value)}
+            />
+          ))}
+        </div>
+      )}
     </div>
   )
 }
 
 export { THEMES }
-export type { BackgroundType, OverlayEffect }
+export type { BackgroundType, OverlayEffect, GlowMode }

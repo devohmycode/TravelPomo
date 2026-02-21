@@ -2,45 +2,84 @@
 
 import { useEffect, useRef } from "react"
 
-interface StaticDrop {
+interface RainDrop {
   x: number
   y: number
-  radius: number
-  opacity: number
-}
-
-interface DripDrop {
-  x: number
-  y: number
-  radius: number
+  length: number
   speed: number
   opacity: number
-  trail: { x: number; y: number }[]
-  trailLength: number
-  wobble: number
-  wobbleSpeed: number
-  wobblePhase: number
-  paused: boolean
-  pauseTimer: number
+  width: number
+}
+
+interface Splash {
+  x: number
+  y: number
+  radius: number
+  maxRadius: number
+  opacity: number
+  fade: number
 }
 
 interface RainCanvasProps {
-  staticDensity?: number
-  dripCount?: number
-  dripSpeedMin?: number
-  dripSpeedMax?: number
+  dropCount?: number
+  speedMin?: number
+  speedMax?: number
+  wind?: number
+  sound?: boolean
 }
 
 export function RainCanvas({
-  staticDensity = 200,
-  dripCount = 30,
-  dripSpeedMin = 0.3,
-  dripSpeedMax = 1.2,
+  dropCount = 180,
+  speedMin = 12,
+  speedMax = 25,
+  wind = 2,
+  sound = true,
 }: RainCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const staticDropsRef = useRef<StaticDrop[]>([])
-  const dripDropsRef = useRef<DripDrop[]>([])
+  const dropsRef = useRef<RainDrop[]>([])
+  const splashesRef = useRef<Splash[]>([])
   const rafRef = useRef<number>(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Rain audio loop from MP3
+  useEffect(() => {
+    if (!sound) return
+
+    const audio = new Audio(
+      "https://res.cloudinary.com/dptrimoqv/video/upload/v1771584789/RAINGlas_Orage_et_pluie_sur_pare_brise_voiture_ID_1296__LaSonotheque.fr_idg9yt.mp3"
+    )
+    audio.loop = true
+    audio.volume = 0
+    audioRef.current = audio
+
+    // Fade in
+    audio.play().then(() => {
+      let vol = 0
+      const fadeIn = setInterval(() => {
+        vol = Math.min(vol + 0.02, 0.5)
+        audio.volume = vol
+        if (vol >= 0.5) clearInterval(fadeIn)
+      }, 30)
+    }).catch(() => {
+      // Autoplay blocked - will start on next user interaction
+    })
+
+    return () => {
+      // Fade out then pause
+      const a = audio
+      let vol = a.volume
+      const fadeOut = setInterval(() => {
+        vol = Math.max(vol - 0.04, 0)
+        a.volume = vol
+        if (vol <= 0) {
+          clearInterval(fadeOut)
+          a.pause()
+          a.src = ""
+        }
+      }, 30)
+      audioRef.current = null
+    }
+  }, [sound])
 
   useEffect(() => {
     const canvas = canvasRef.current
@@ -63,161 +102,81 @@ export function RainCanvas({
       initDrops()
     }
 
-    const createStaticDrop = (): StaticDrop => ({
-      x: Math.random() * w,
-      y: Math.random() * h,
-      radius: 0.5 + Math.random() * 2.5,
-      opacity: 0.1 + Math.random() * 0.35,
-    })
-
-    const createDripDrop = (randomY: boolean): DripDrop => {
-      const speed = dripSpeedMin + Math.random() * (dripSpeedMax - dripSpeedMin)
+    const createDrop = (randomY: boolean): RainDrop => {
+      const speed = speedMin + Math.random() * (speedMax - speedMin)
+      const depthFactor = (speed - speedMin) / (speedMax - speedMin)
       return {
-        x: Math.random() * w,
-        y: randomY ? Math.random() * h * 0.6 : -10 - Math.random() * 60,
-        radius: 1.5 + Math.random() * 2.5,
+        x: Math.random() * (w + 100) - 50,
+        y: randomY ? Math.random() * h : -Math.random() * h * 0.5,
+        length: 15 + depthFactor * 25 + Math.random() * 10,
         speed,
-        opacity: 0.2 + Math.random() * 0.3,
-        trail: [],
-        trailLength: 30 + Math.floor(Math.random() * 50),
-        wobble: 0.3 + Math.random() * 0.8,
-        wobbleSpeed: 0.01 + Math.random() * 0.03,
-        wobblePhase: Math.random() * Math.PI * 2,
-        paused: false,
-        pauseTimer: 0,
+        opacity: 0.15 + depthFactor * 0.25,
+        width: 0.8 + depthFactor * 0.7,
       }
     }
 
     const initDrops = () => {
-      const statics: StaticDrop[] = []
-      for (let i = 0; i < staticDensity; i++) {
-        statics.push(createStaticDrop())
+      const drops: RainDrop[] = []
+      for (let i = 0; i < dropCount; i++) {
+        drops.push(createDrop(true))
       }
-      staticDropsRef.current = statics
-
-      const drips: DripDrop[] = []
-      for (let i = 0; i < dripCount; i++) {
-        drips.push(createDripDrop(true))
-      }
-      dripDropsRef.current = drips
-    }
-
-    const drawStaticDrop = (drop: StaticDrop) => {
-      // Outer glow
-      ctx.beginPath()
-      ctx.arc(drop.x, drop.y, drop.radius + 0.5, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(255, 255, 255, ${drop.opacity * 0.3})`
-      ctx.fill()
-
-      // Main drop
-      ctx.beginPath()
-      ctx.arc(drop.x, drop.y, drop.radius, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(255, 255, 255, ${drop.opacity})`
-      ctx.fill()
-
-      // Highlight
-      ctx.beginPath()
-      ctx.arc(
-        drop.x - drop.radius * 0.25,
-        drop.y - drop.radius * 0.25,
-        drop.radius * 0.35,
-        0,
-        Math.PI * 2
-      )
-      ctx.fillStyle = `rgba(255, 255, 255, ${drop.opacity * 1.5})`
-      ctx.fill()
-    }
-
-    const drawDripDrop = (drop: DripDrop) => {
-      // Trail
-      const trail = drop.trail
-      for (let i = 0; i < trail.length; i++) {
-        const t = i / trail.length
-        const trailRadius = drop.radius * 0.3 * (1 - t * 0.7)
-        const trailOpacity = drop.opacity * 0.3 * (1 - t)
-        if (trailRadius < 0.2) continue
-
-        ctx.beginPath()
-        ctx.arc(trail[i].x, trail[i].y, trailRadius, 0, Math.PI * 2)
-        ctx.fillStyle = `rgba(255, 255, 255, ${trailOpacity})`
-        ctx.fill()
-      }
-
-      // Main drip head - slightly elongated
-      ctx.beginPath()
-      ctx.ellipse(drop.x, drop.y, drop.radius * 0.85, drop.radius * 1.15, 0, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(255, 255, 255, ${drop.opacity})`
-      ctx.fill()
-
-      // Outer glow
-      ctx.beginPath()
-      ctx.ellipse(drop.x, drop.y, drop.radius + 1, drop.radius + 1.3, 0, 0, Math.PI * 2)
-      ctx.fillStyle = `rgba(255, 255, 255, ${drop.opacity * 0.2})`
-      ctx.fill()
-
-      // Highlight
-      ctx.beginPath()
-      ctx.arc(
-        drop.x - drop.radius * 0.2,
-        drop.y - drop.radius * 0.3,
-        drop.radius * 0.35,
-        0,
-        Math.PI * 2
-      )
-      ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(drop.opacity * 1.8, 0.8)})`
-      ctx.fill()
+      dropsRef.current = drops
+      splashesRef.current = []
     }
 
     const draw = () => {
       ctx.clearRect(0, 0, w, h)
 
-      // Static condensation drops
-      for (const drop of staticDropsRef.current) {
-        drawStaticDrop(drop)
-      }
+      const drops = dropsRef.current
+      const splashes = splashesRef.current
 
-      // Dripping drops
-      const drips = dripDropsRef.current
-      for (let i = 0; i < drips.length; i++) {
-        const drop = drips[i]
+      // Draw rain drops as streaks
+      for (let i = 0; i < drops.length; i++) {
+        const drop = drops[i]
 
-        // Handle pause (some drops stop briefly before continuing)
-        if (drop.paused) {
-          drop.pauseTimer--
-          if (drop.pauseTimer <= 0) {
-            drop.paused = false
-          }
-          drawDripDrop(drop)
-          continue
-        }
+        ctx.beginPath()
+        ctx.moveTo(drop.x, drop.y)
+        ctx.lineTo(drop.x - wind * (drop.length / drop.speed), drop.y - drop.length)
+        ctx.strokeStyle = `rgba(200, 220, 255, ${drop.opacity})`
+        ctx.lineWidth = drop.width
+        ctx.lineCap = "round"
+        ctx.stroke()
 
-        // Random pause chance
-        if (Math.random() < 0.002) {
-          drop.paused = true
-          drop.pauseTimer = 30 + Math.floor(Math.random() * 120)
-          drawDripDrop(drop)
-          continue
-        }
-
-        // Record trail
-        drop.trail.unshift({ x: drop.x, y: drop.y })
-        if (drop.trail.length > drop.trailLength) {
-          drop.trail.pop()
-        }
-
-        // Move with wobble
-        drop.wobblePhase += drop.wobbleSpeed
+        // Move
         drop.y += drop.speed
-        drop.x += Math.sin(drop.wobblePhase) * drop.wobble * 0.15
-
-        // Accelerate slightly as drip grows
-        drop.speed += 0.001
-
-        drawDripDrop(drop)
+        drop.x += wind
 
         // Reset when off screen
-        if (drop.y > h + 20) {
-          drips[i] = createDripDrop(false)
+        if (drop.y > h + drop.length) {
+          // Spawn splash at bottom
+          if (Math.random() < 0.3) {
+            splashes.push({
+              x: drop.x,
+              y: h - 2 + Math.random() * 4,
+              radius: 0,
+              maxRadius: 2 + Math.random() * 3,
+              opacity: 0.3 + Math.random() * 0.2,
+              fade: 0.02 + Math.random() * 0.02,
+            })
+          }
+          drops[i] = createDrop(false)
+        }
+      }
+
+      // Draw splashes
+      for (let i = splashes.length - 1; i >= 0; i--) {
+        const splash = splashes[i]
+        ctx.beginPath()
+        ctx.arc(splash.x, splash.y, splash.radius, 0, Math.PI * 2)
+        ctx.strokeStyle = `rgba(200, 220, 255, ${splash.opacity})`
+        ctx.lineWidth = 0.5
+        ctx.stroke()
+
+        splash.radius += 0.3
+        splash.opacity -= splash.fade
+
+        if (splash.opacity <= 0 || splash.radius > splash.maxRadius) {
+          splashes.splice(i, 1)
         }
       }
 
@@ -232,7 +191,7 @@ export function RainCanvas({
       cancelAnimationFrame(rafRef.current)
       window.removeEventListener("resize", resize)
     }
-  }, [staticDensity, dripCount, dripSpeedMin, dripSpeedMax])
+  }, [dropCount, speedMin, speedMax, wind])
 
   return (
     <canvas

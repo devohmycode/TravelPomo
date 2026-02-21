@@ -1,20 +1,45 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
-import { Maximize, Timer, Settings, Droplets } from "lucide-react"
+import { useCallback, useEffect, useRef } from "react"
+import {
+  Maximize,
+  Timer,
+  Settings,
+  Droplets,
+  RotateCcw,
+  SkipForward,
+  Flag,
+  BarChart3,
+} from "lucide-react"
+import { toast } from "sonner"
 import { FlipGroup } from "./flip-group"
 import { LiquidButton } from "./ui/liquid-glass-button"
 import { SettingsPanel } from "./settings-panel"
 import { RainCanvas } from "./rain-canvas"
 import { SnowCanvas } from "./snow-canvas"
+import { ProgressRing } from "./progress-ring"
+import { LapList } from "./lap-list"
+import { StatsPanel } from "./stats-panel"
+import { TaskInput } from "./task-input"
 import {
   ColorPanel,
   THEMES,
   type BackgroundType,
   type OverlayEffect,
+  type GlowMode,
 } from "./color-panel"
-
-type Mode = "clock" | "pomo" | "stopwatch"
+import { usePersistedState } from "@/hooks/use-persisted-state"
+import { useTimer } from "@/hooks/use-timer"
+import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
+import { getPhaseLabel } from "@/lib/pomodoro"
+import {
+  sendNotification,
+  playAlarmSound,
+  requestNotificationPermission,
+} from "@/lib/notifications"
+import { addSession } from "@/lib/session-store"
+import { isNative, toggleBrowserFullscreen } from "@/lib/fullscreen"
+import { keepAwake, allowSleep } from "@/lib/keep-awake"
 
 function hexToRgb(hex: string) {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -34,57 +59,110 @@ function lerpColor(
   return `rgb(${r},${g},${b})`
 }
 
-function getTime(use24Hour: boolean) {
-  const now = new Date()
-  let hours = now.getHours()
-  if (!use24Hour) {
-    hours = hours % 12 || 12
-  }
-  return {
-    hours: String(hours).padStart(2, "0"),
-    minutes: String(now.getMinutes()).padStart(2, "0"),
-    seconds: String(now.getSeconds()).padStart(2, "0"),
-  }
-}
-
-function formatTimer(totalSeconds: number) {
-  const m = Math.floor(totalSeconds / 60)
-  const s = totalSeconds % 60
-  return {
-    minutes: String(m).padStart(2, "0"),
-    seconds: String(s).padStart(2, "0"),
-  }
-}
-
 export function FlipClock() {
-  const [mode, setMode] = useState<Mode>("clock")
-  const [use24Hour, setUse24Hour] = useState(true)
-  const [showSeconds, setShowSeconds] = useState(true)
-  const [showSettings, setShowSettings] = useState(false)
-  const [showColorPanel, setShowColorPanel] = useState(false)
-  const [themeIndex, setThemeIndex] = useState(0)
-  const [bgType, setBgType] = useState<BackgroundType>("linear")
-  const [overlay, setOverlay] = useState<OverlayEffect>("none")
+  // Persisted settings
+  const [use24Hour, setUse24Hour] = usePersistedState("pomo-24h", true)
+  const [showSeconds, setShowSeconds] = usePersistedState("pomo-seconds", true)
+  const [soundEnabled, setSoundEnabled] = usePersistedState("pomo-sound", true)
+  const [themeIndex, setThemeIndex] = usePersistedState("pomo-theme", 0)
+  const [bgType, setBgType] = usePersistedState<BackgroundType>("pomo-bg", "linear")
+  const [overlay, setOverlay] = usePersistedState<OverlayEffect>("pomo-overlay", "none")
+  const [glowEnabled, setGlowEnabled] = usePersistedState("pomo-glow", false)
+  const [glowMode, setGlowMode] = usePersistedState<GlowMode>("pomo-glowmode", "rotate")
+  const [autoStartBreak, setAutoStartBreak] = usePersistedState("pomo-autobreak", false)
+  const [autoStartWork, setAutoStartWork] = usePersistedState("pomo-autowork", false)
+  const [zoomed, setZoomed] = usePersistedState("pomo-zoomed", false)
 
-  // Clock state
-  const [time, setTime] = useState<{
-    hours: string
-    minutes: string
-    seconds: string
-  } | null>(null)
+  // Panels
+  const [showSettings, setShowSettings] = usePersistedState("pomo-showsettings", false)
+  const [showColorPanel, setShowColorPanel] = usePersistedState("pomo-showcolors", false)
+  const [showStatsPanel, setShowStatsPanel] = usePersistedState("pomo-showstats", false)
 
-  // Pomodoro state
-  const [pomoRemaining, setPomoRemaining] = useState(25 * 60)
-  const [pomoRunning, setPomoRunning] = useState(false)
+  // Task
+  const [currentTask, setCurrentTask] = usePersistedState("pomo-task", "")
 
-  // Stopwatch state
-  const [swElapsed, setSwElapsed] = useState(0)
-  const [swRunning, setSwRunning] = useState(false)
+  // Timer
+  const timer = useTimer(use24Hour)
+
+  // Persisted pomo config
+  const [savedConfig, setSavedConfig] = usePersistedState("pomo-config", timer.pomoConfig)
+  useEffect(() => {
+    timer.setPomoConfig(savedConfig)
+  }, []) // Apply saved config on mount only
+
+  const handleConfigChange = useCallback(
+    (config: typeof savedConfig) => {
+      setSavedConfig(config)
+      timer.setPomoConfig(config)
+    },
+    [setSavedConfig, timer]
+  )
+
+  // Request notification permission on first pomo start
+  const notifRequested = useRef(false)
+  useEffect(() => {
+    if (timer.mode === "pomo" && timer.isRunning && !notifRequested.current) {
+      notifRequested.current = true
+      requestNotificationPermission()
+    }
+  }, [timer.mode, timer.isRunning])
+
+  // Phase completion handler
+  useEffect(() => {
+    timer.onPhaseComplete.current = (phase, completedSessions) => {
+      const phaseLabel = getPhaseLabel(phase)
+
+      if (phase === "work") {
+        // Record session
+        addSession({
+          task: currentTask || "Untitled",
+          phase: "work",
+          durationMinutes: timer.pomoConfig.workMinutes,
+          completedAt: new Date().toISOString(),
+        })
+
+        toast.success("Work session complete!", {
+          description: "Time for a break.",
+        })
+        sendNotification(
+          "Pomodoro Complete",
+          `Work session #${completedSessions} done! Time for a break.`
+        )
+      } else {
+        toast.success(`${phaseLabel} over!`, {
+          description: "Ready to focus?",
+        })
+        sendNotification("Break Over", "Ready to focus?")
+      }
+
+      if (soundEnabled) {
+        playAlarmSound()
+      }
+
+      // Auto-advance phase
+      setTimeout(() => {
+        timer.skipPhase()
+        // Auto-start if enabled
+        if (
+          (phase === "work" && autoStartBreak) ||
+          (phase !== "work" && autoStartWork)
+        ) {
+          setTimeout(() => timer.toggleRunning(), 1500)
+        }
+      }, 500)
+    }
+  }, [
+    currentTask,
+    soundEnabled,
+    autoStartBreak,
+    autoStartWork,
+    timer,
+  ])
 
   // Background animation
   const bgRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number>(0)
-  const theme = THEMES[themeIndex]
+  const theme = THEMES[themeIndex] || THEMES[0]
   const themeRef = useRef(theme)
   const bgTypeRef = useRef(bgType)
   themeRef.current = theme
@@ -117,95 +195,68 @@ export function FlipClock() {
     return () => cancelAnimationFrame(rafRef.current)
   }, [animateBg])
 
-  // Clock tick
+  // Keep screen awake while timer is running
   useEffect(() => {
-    setTime(getTime(use24Hour))
-    const interval = setInterval(() => {
-      setTime(getTime(use24Hour))
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [use24Hour])
-
-  // Pomodoro tick
-  useEffect(() => {
-    if (!pomoRunning) return
-    const interval = setInterval(() => {
-      setPomoRemaining((prev) => {
-        if (prev <= 0) {
-          setPomoRunning(false)
-          return 0
-        }
-        return prev - 1
-      })
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [pomoRunning])
-
-  // Stopwatch tick
-  useEffect(() => {
-    if (!swRunning) return
-    const interval = setInterval(() => {
-      setSwElapsed((prev) => prev + 1)
-    }, 1000)
-    return () => clearInterval(interval)
-  }, [swRunning])
-
-  const handleFullscreen = () => {
-    if (document.fullscreenElement) {
-      document.exitFullscreen()
+    if (timer.isRunning) {
+      keepAwake()
     } else {
-      document.documentElement.requestFullscreen()
+      allowSleep()
     }
-  }
+    return () => { allowSleep() }
+  }, [timer.isRunning])
 
-  const handleModeChange = (newMode: Mode) => {
-    setMode(newMode)
-    if (newMode === "pomo") {
-      setPomoRemaining(25 * 60)
-      setPomoRunning(false)
-    }
-    if (newMode === "stopwatch") {
-      setSwElapsed(0)
-      setSwRunning(false)
-    }
-  }
-
-  // Compute displayed values
-  let displayHours: string | null = null
-  let displayMinutes: string
-  let displaySeconds: string
-
-  if (mode === "clock") {
-    displayHours = time?.hours ?? "00"
-    displayMinutes = time?.minutes ?? "00"
-    displaySeconds = time?.seconds ?? "00"
-  } else if (mode === "pomo") {
-    const pomo = formatTimer(pomoRemaining)
-    displayMinutes = pomo.minutes
-    displaySeconds = pomo.seconds
-  } else {
-    const sw = formatTimer(swElapsed)
-    displayMinutes = sw.minutes
-    displaySeconds = sw.seconds
-  }
-
-  const handleTimerTap = () => {
-    if (mode === "pomo") setPomoRunning((r) => !r)
-    else if (mode === "stopwatch") setSwRunning((r) => !r)
-  }
-
-  const isTimerActive =
-    (mode === "pomo" && pomoRunning) || (mode === "stopwatch" && swRunning)
-
-  const togglePanel = (panel: "settings" | "color") => {
-    if (panel === "settings") {
-      setShowSettings((s) => !s)
-      if (!showSettings) setShowColorPanel(false)
+  // Fullscreen / Zoom
+  const handleFullscreen = useCallback(() => {
+    if (isNative()) {
+      // On Android: toggle zoomed cards instead of browser fullscreen
+      setZoomed((z) => !z)
     } else {
-      setShowColorPanel((s) => !s)
-      if (!showColorPanel) setShowSettings(false)
+      toggleBrowserFullscreen()
     }
-  }
+  }, [setZoomed])
+
+  // Panel toggles
+  const closeAllPanels = useCallback(() => {
+    setShowSettings(false)
+    setShowColorPanel(false)
+    setShowStatsPanel(false)
+  }, [setShowSettings, setShowColorPanel, setShowStatsPanel])
+
+  const togglePanel = useCallback(
+    (panel: "settings" | "color" | "stats") => {
+      if (panel === "settings") {
+        setShowSettings((s) => !s)
+        setShowColorPanel(false)
+        setShowStatsPanel(false)
+      } else if (panel === "color") {
+        setShowColorPanel((s) => !s)
+        setShowSettings(false)
+        setShowStatsPanel(false)
+      } else {
+        setShowStatsPanel((s) => !s)
+        setShowSettings(false)
+        setShowColorPanel(false)
+      }
+    },
+    [setShowSettings, setShowColorPanel, setShowStatsPanel]
+  )
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onToggleRunning: timer.toggleRunning,
+    onReset: timer.reset,
+    onLap: timer.addLap,
+    onFullscreen: handleFullscreen,
+    onToggleSettings: () => togglePanel("settings"),
+    onToggleColors: () => togglePanel("color"),
+    onClosePanel: closeAllPanels,
+    onSetMode: timer.setMode,
+    mode: timer.mode,
+  })
+
+  const glowColors = [theme.a, theme.b, theme.a + "cc", theme.b + "cc"]
+
+  const pomoPhaseCompleted = timer.pomo.remaining === 0 && !timer.pomo.running
 
   return (
     <main className="relative min-h-svh overflow-hidden">
@@ -225,8 +276,8 @@ export function FlipClock() {
           }}
         />
       )}
-      {overlay === "rain" && <RainCanvas />}
-      {overlay === "snow" && <SnowCanvas />}
+      {overlay === "rain" && <RainCanvas sound={soundEnabled} />}
+      {overlay === "snow" && <SnowCanvas sound={soundEnabled} />}
       {overlay === "flutes" && (
         <div
           className="absolute inset-0 pointer-events-none"
@@ -243,11 +294,86 @@ export function FlipClock() {
         className="relative flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8"
         style={{ zIndex: 1 }}
       >
-        {mode === "clock" && displayHours !== null && (
-          <FlipGroup value={displayHours} />
+        {/* Phase indicator for Pomo mode */}
+        {timer.mode === "pomo" && (
+          <div className="flex flex-col items-center gap-2">
+            <span
+              className="text-white/70 text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full"
+              style={{
+                background: "rgba(255,255,255,0.08)",
+                backdropFilter: "blur(12px)",
+              }}
+            >
+              {getPhaseLabel(timer.pomo.phase)}
+            </span>
+            {/* Session dots */}
+            <div className="flex gap-1.5">
+              {Array.from({ length: timer.pomoConfig.sessionsBeforeLongBreak }).map(
+                (_, i) => (
+                  <div
+                    key={i}
+                    className={`size-2 rounded-full transition-all duration-300 ${
+                      i < timer.pomo.completedSessions % timer.pomoConfig.sessionsBeforeLongBreak
+                        ? "bg-white/80 scale-110"
+                        : "bg-white/20"
+                    }`}
+                  />
+                )
+              )}
+            </div>
+          </div>
         )}
-        <FlipGroup value={displayMinutes} />
-        {showSeconds && <FlipGroup value={displaySeconds} />}
+
+        {/* Task input for Pomo mode */}
+        {timer.mode === "pomo" && (
+          <TaskInput value={currentTask} onChange={setCurrentTask} />
+        )}
+
+        {/* Progress ring wrapper for Pomo mode */}
+        <div
+          className="relative flex flex-col items-center gap-5 sm:gap-8 transition-transform duration-300 origin-center"
+          style={zoomed ? { transform: "scale(1.35)" } : undefined}
+        >
+          {timer.mode === "pomo" && (
+            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ margin: "-20px" }}>
+              <ProgressRing
+                progress={timer.pomoProgress}
+                colorA={theme.a}
+                colorB={theme.b}
+                size={400}
+                className="opacity-40"
+              />
+            </div>
+          )}
+
+          {timer.mode === "clock" && timer.displayHours !== null && (
+            <FlipGroup
+              value={timer.displayHours}
+              glowEnabled={glowEnabled}
+              glowMode={glowMode}
+              glowColors={glowColors}
+            />
+          )}
+          <FlipGroup
+            value={timer.displayMinutes}
+            glowEnabled={glowEnabled}
+            glowMode={glowMode}
+            glowColors={glowColors}
+          />
+          {showSeconds && (
+            <FlipGroup
+              value={timer.displaySeconds}
+              glowEnabled={glowEnabled}
+              glowMode={glowMode}
+              glowColors={glowColors}
+            />
+          )}
+        </div>
+
+        {/* Lap list for Stopwatch mode */}
+        {timer.mode === "stopwatch" && timer.laps.length > 0 && (
+          <LapList laps={timer.laps} />
+        )}
       </div>
 
       {/* Settings panel */}
@@ -257,13 +383,21 @@ export function FlipClock() {
           style={{ zIndex: 10, bottom: "18%" }}
         >
           <SettingsPanel
-            mode={mode}
-            onModeChange={handleModeChange}
+            mode={timer.mode}
+            onModeChange={timer.setMode}
             showSeconds={showSeconds}
             onToggleSeconds={() => setShowSeconds((s) => !s)}
+            soundEnabled={soundEnabled}
+            onToggleSound={() => setSoundEnabled((s) => !s)}
             use24Hour={use24Hour}
             onToggle24Hour={() => setUse24Hour((u) => !u)}
             onClose={() => setShowSettings(false)}
+            pomoConfig={savedConfig}
+            onPomoConfigChange={handleConfigChange}
+            autoStartBreak={autoStartBreak}
+            onToggleAutoStartBreak={() => setAutoStartBreak((v) => !v)}
+            autoStartWork={autoStartWork}
+            onToggleAutoStartWork={() => setAutoStartWork((v) => !v)}
           />
         </div>
       )}
@@ -281,8 +415,22 @@ export function FlipClock() {
             onBackgroundTypeChange={setBgType}
             overlayEffect={overlay}
             onOverlayEffectChange={setOverlay}
+            glowEnabled={glowEnabled}
+            onGlowEnabledChange={setGlowEnabled}
+            glowMode={glowMode}
+            onGlowModeChange={setGlowMode}
             onClose={() => setShowColorPanel(false)}
           />
+        </div>
+      )}
+
+      {/* Stats panel */}
+      {showStatsPanel && (
+        <div
+          className="absolute inset-x-0 flex justify-center px-4"
+          style={{ zIndex: 10, bottom: "18%" }}
+        >
+          <StatsPanel onClose={() => setShowStatsPanel(false)} />
         </div>
       )}
 
@@ -291,27 +439,66 @@ export function FlipClock() {
         className="absolute bottom-[8%] sm:bottom-[6%] inset-x-0 flex justify-center gap-3"
         style={{ zIndex: 11 }}
       >
-        {mode !== "clock" && (
+        {/* Reset (pomo & stopwatch) */}
+        {timer.mode !== "clock" && (
           <LiquidButton
             size="icon"
-            onClick={handleTimerTap}
-            aria-label={isTimerActive ? "Pause" : "Demarrer"}
+            onClick={timer.reset}
+            aria-label="Reset"
+            className="rounded-full size-12 sm:size-14"
+          >
+            <RotateCcw className="size-4 sm:size-5 text-white/80" />
+          </LiquidButton>
+        )}
+
+        {/* Play/Pause */}
+        {timer.mode !== "clock" && (
+          <LiquidButton
+            size="icon"
+            onClick={timer.toggleRunning}
+            aria-label={timer.isRunning ? "Pause" : "Start"}
             className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
-              isTimerActive
+              timer.isRunning
                 ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
                 : ""
             }`}
           >
             <Timer
-              className={`size-4 sm:size-5 ${isTimerActive ? "text-white" : "text-white/80"}`}
+              className={`size-4 sm:size-5 ${
+                timer.isRunning ? "text-white" : "text-white/80"
+              }`}
             />
+          </LiquidButton>
+        )}
+
+        {/* Skip phase (pomo only) */}
+        {timer.mode === "pomo" && (
+          <LiquidButton
+            size="icon"
+            onClick={timer.skipPhase}
+            aria-label="Skip phase"
+            className="rounded-full size-12 sm:size-14"
+          >
+            <SkipForward className="size-4 sm:size-5 text-white/80" />
+          </LiquidButton>
+        )}
+
+        {/* Lap (stopwatch only) */}
+        {timer.mode === "stopwatch" && timer.isRunning && (
+          <LiquidButton
+            size="icon"
+            onClick={timer.addLap}
+            aria-label="Lap"
+            className="rounded-full size-12 sm:size-14"
+          >
+            <Flag className="size-4 sm:size-5 text-white/80" />
           </LiquidButton>
         )}
 
         <LiquidButton
           size="icon"
           onClick={() => togglePanel("settings")}
-          aria-label="Parametres"
+          aria-label="Settings"
           className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
             showSettings
               ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
@@ -319,14 +506,16 @@ export function FlipClock() {
           }`}
         >
           <Settings
-            className={`size-4 sm:size-5 ${showSettings ? "text-white" : "text-white/80"}`}
+            className={`size-4 sm:size-5 ${
+              showSettings ? "text-white" : "text-white/80"
+            }`}
           />
         </LiquidButton>
 
         <LiquidButton
           size="icon"
           onClick={() => togglePanel("color")}
-          aria-label="Couleurs"
+          aria-label="Colors"
           className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
             showColorPanel
               ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
@@ -334,14 +523,34 @@ export function FlipClock() {
           }`}
         >
           <Droplets
-            className={`size-4 sm:size-5 ${showColorPanel ? "text-white" : "text-white/80"}`}
+            className={`size-4 sm:size-5 ${
+              showColorPanel ? "text-white" : "text-white/80"
+            }`}
+          />
+        </LiquidButton>
+
+        {/* Stats button */}
+        <LiquidButton
+          size="icon"
+          onClick={() => togglePanel("stats")}
+          aria-label="Statistics"
+          className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
+            showStatsPanel
+              ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
+              : ""
+          }`}
+        >
+          <BarChart3
+            className={`size-4 sm:size-5 ${
+              showStatsPanel ? "text-white" : "text-white/80"
+            }`}
           />
         </LiquidButton>
 
         <LiquidButton
           size="icon"
           onClick={handleFullscreen}
-          aria-label="Plein ecran"
+          aria-label="Fullscreen"
           className="rounded-full size-12 sm:size-14"
         >
           <Maximize className="size-4 sm:size-5 text-white/80" />

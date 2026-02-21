@@ -20,6 +20,7 @@ interface SnowCanvasProps {
   sizeMax?: number
   speedMin?: number
   speedMax?: number
+  sound?: boolean
 }
 
 export function SnowCanvas({
@@ -28,10 +29,51 @@ export function SnowCanvas({
   sizeMax = 4.5,
   speedMin = 0.2,
   speedMax = 1.4,
+  sound = true,
 }: SnowCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const flakesRef = useRef<Snowflake[]>([])
   const rafRef = useRef<number>(0)
+  const audioRef = useRef<HTMLAudioElement | null>(null)
+
+  // Snow audio loop from MP3
+  useEffect(() => {
+    if (!sound) return
+
+    const audio = new Audio(
+      "https://res.cloudinary.com/dptrimoqv/video/upload/v1771585419/FOLYFeet_Pas_dans_la_neige_2_ID_2890__LaSonotheque.fr_u46ill.mp3"
+    )
+    audio.loop = true
+    audio.volume = 0
+    audioRef.current = audio
+
+    // Fade in
+    audio.play().then(() => {
+      let vol = 0
+      const fadeIn = setInterval(() => {
+        vol = Math.min(vol + 0.02, 0.5)
+        audio.volume = vol
+        if (vol >= 0.5) clearInterval(fadeIn)
+      }, 30)
+    }).catch(() => {
+      // Autoplay blocked
+    })
+
+    return () => {
+      const a = audio
+      let vol = a.volume
+      const fadeOut = setInterval(() => {
+        vol = Math.max(vol - 0.04, 0)
+        a.volume = vol
+        if (vol <= 0) {
+          clearInterval(fadeOut)
+          a.pause()
+          a.src = ""
+        }
+      }, 30)
+      audioRef.current = null
+    }
+  }, [sound])
 
   useEffect(() => {
     const canvas = canvasRef.current
