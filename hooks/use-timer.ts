@@ -12,6 +12,7 @@ import {
   resetAll,
   getPhaseSeconds,
 } from "@/lib/pomodoro"
+import { syncWidgetState, forceSyncWidgetState } from "@/lib/widget-bridge"
 
 export type Mode = "clock" | "pomo" | "stopwatch"
 
@@ -54,6 +55,9 @@ export interface TimerState {
   onPhaseComplete: React.MutableRefObject<
     ((phase: PomodoroPhase, completedSessions: number) => void) | null
   >
+
+  // Widget sync
+  taskRef: React.MutableRefObject<string>
 }
 
 function getTime(use24Hour: boolean): ClockValues {
@@ -104,6 +108,9 @@ export function useTimer(use24Hour: boolean): TimerState {
     ((phase: PomodoroPhase, completedSessions: number) => void) | null
   >(null)
 
+  // Widget sync task ref (set by component)
+  const taskRef = useRef("")
+
   // Clock tick
   useEffect(() => {
     setClock(getTime(use24Hour))
@@ -142,9 +149,13 @@ export function useTimer(use24Hour: boolean): TimerState {
               : prev.completedSessions
           // Fire notification callback
           onPhaseComplete.current?.(completedPhase, completedSessions)
-          return { ...prev, remaining: 0, running: false }
+          const next = { ...prev, remaining: 0, running: false }
+          forceSyncWidgetState(next, pomoConfig, taskRef.current)
+          return next
         }
-        return { ...prev, remaining }
+        const next = { ...prev, remaining }
+        syncWidgetState(next, pomoConfig, taskRef.current)
+        return next
       })
     }, 250) // Check 4x/sec for responsiveness
 
@@ -200,7 +211,9 @@ export function useTimer(use24Hour: boolean): TimerState {
           pomoStartRef.current = Date.now()
           pomoRemainingAtStart.current = prev.remaining
         }
-        return { ...prev, running: !prev.running }
+        const next = { ...prev, running: !prev.running }
+        forceSyncWidgetState(next, pomoConfig, taskRef.current)
+        return next
       })
     } else if (mode === "stopwatch") {
       setSwRunning((r) => {
@@ -212,11 +225,15 @@ export function useTimer(use24Hour: boolean): TimerState {
         return !r
       })
     }
-  }, [mode, swElapsed])
+  }, [mode, swElapsed, pomoConfig])
 
   const reset = useCallback(() => {
     if (mode === "pomo") {
-      setPomo((prev) => resetPhase(prev, pomoConfig))
+      setPomo((prev) => {
+        const next = resetPhase(prev, pomoConfig)
+        forceSyncWidgetState(next, pomoConfig, taskRef.current)
+        return next
+      })
       pomoStartRef.current = null
     } else if (mode === "stopwatch") {
       setSwElapsed(0)
@@ -228,7 +245,11 @@ export function useTimer(use24Hour: boolean): TimerState {
 
   const skipPhase = useCallback(() => {
     if (mode === "pomo") {
-      setPomo((prev) => advancePhase(prev, pomoConfig))
+      setPomo((prev) => {
+        const next = advancePhase(prev, pomoConfig)
+        forceSyncWidgetState(next, pomoConfig, taskRef.current)
+        return next
+      })
       pomoStartRef.current = null
     }
   }, [mode, pomoConfig])
@@ -299,5 +320,6 @@ export function useTimer(use24Hour: boolean): TimerState {
     displayMinutes,
     displaySeconds,
     onPhaseComplete,
+    taskRef,
   }
 }

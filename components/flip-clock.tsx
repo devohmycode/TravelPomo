@@ -40,6 +40,12 @@ import {
 import { addSession } from "@/lib/session-store"
 import { isNative, toggleBrowserFullscreen } from "@/lib/fullscreen"
 import { keepAwake, allowSleep } from "@/lib/keep-awake"
+import {
+  startBackgroundTimer,
+  stopBackgroundTimer,
+  getWidgetState,
+  forceSyncWidgetState,
+} from "@/lib/widget-bridge"
 
 function hexToRgb(hex: string) {
   const r = parseInt(hex.slice(1, 3), 16)
@@ -83,6 +89,11 @@ export function FlipClock() {
 
   // Timer
   const timer = useTimer(use24Hour)
+
+  // Keep widget bridge taskRef in sync
+  useEffect(() => {
+    timer.taskRef.current = currentTask
+  }, [currentTask, timer.taskRef])
 
   // Persisted pomo config
   const [savedConfig, setSavedConfig] = usePersistedState("pomo-config", timer.pomoConfig)
@@ -204,6 +215,62 @@ export function FlipClock() {
     }
     return () => { allowSleep() }
   }, [timer.isRunning])
+
+  // App lifecycle: background/foreground (Capacitor)
+  // Use refs to avoid re-registering the listener on every state change
+  const timerRef = useRef(timer)
+  const currentTaskRef = useRef(currentTask)
+  timerRef.current = timer
+  currentTaskRef.current = currentTask
+
+  useEffect(() => {
+    if (!isNative()) return
+
+    let cancelled = false
+    let removeListener: (() => void) | undefined
+
+    import("@capacitor/app").then(({ App }) => {
+      if (cancelled) return
+
+      App.addListener("appStateChange", async ({ isActive }) => {
+        const t = timerRef.current
+        const task = currentTaskRef.current
+
+        if (t.mode !== "pomo") return
+
+        if (!isActive && t.pomo.running) {
+          // Going to background while timer is running -> start native service
+          forceSyncWidgetState(t.pomo, t.pomoConfig, task)
+          await startBackgroundTimer()
+        } else if (isActive) {
+          // Returning to foreground -> restore state from native, stop service
+          const nativeState = await getWidgetState()
+          if (nativeState) {
+            if (nativeState.pendingSessions > 0) {
+              for (let i = 0; i < nativeState.pendingSessions; i++) {
+                addSession({
+                  task: task || "Untitled",
+                  phase: "work",
+                  durationMinutes: t.pomoConfig.workMinutes,
+                  completedAt: new Date().toISOString(),
+                })
+              }
+            }
+          }
+          await stopBackgroundTimer()
+        }
+      }).then((handle) => {
+        removeListener = () => handle.remove()
+      })
+    }).catch(() => {
+      // @capacitor/app not available
+    })
+
+    return () => {
+      cancelled = true
+      removeListener?.()
+    }
+  }, []) // Register once on mount
 
   // Fullscreen / Zoom
   const handleFullscreen = useCallback(() => {

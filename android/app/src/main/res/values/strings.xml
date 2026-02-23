@@ -4,4 +4,11 @@
     <string name="title_activity_main">Pomo</string>
     <string name="package_name">com.pomo.focustimer</string>
     <string name="custom_url_scheme">com.pomo.focustimer</string>
+    <string name="widget_name">Pomo Timer</string>
+    <string name="widget_description">Pomodoro timer widget with play/pause/skip controls</string>
+    <string name="notification_channel_timer">Timer</string>
+    <string name="notification_channel_alerts">Alerts</string>
+    <string name="widget_toggle">Play/Pause</string>
+    <string name="widget_skip">Skip phase</string>
+    <string name="widget_reset">Reset</string>
 </resources>

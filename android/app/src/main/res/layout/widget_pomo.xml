@@ -1,0 +1,126 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widget_root"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_background"
+    android:padding="12dp"
+    android:gravity="center">
+
+    <!-- Row 1: Timer + Phase + Sessions -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Timer display -->
+        <TextView
+            android:id="@+id/widget_timer"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text="25:00"
+            android:textColor="#FFFFFF"
+            android:textSize="36sp"
+            android:fontFamily="monospace"
+            android:textStyle="bold"
+            android:gravity="center" />
+
+        <!-- Phase + Sessions column -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:layout_marginStart="8dp">
+
+            <TextView
+                android:id="@+id/widget_phase"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="WORK"
+                android:textColor="#B0FFFFFF"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.15" />
+
+            <TextView
+                android:id="@+id/widget_sessions"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0/4"
+                android:textColor="#80FFFFFF"
+                android:textSize="11sp"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Row 2: Task + Buttons -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal"
+        android:gravity="center_vertical">
+
+        <!-- Task name -->
+        <TextView
+            android:id="@+id/widget_task"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:text=""
+            android:textColor="#80FFFFFF"
+            android:textSize="12sp"
+            android:maxLines="1"
+            android:ellipsize="end"
+            android:gravity="start|center_vertical"
+            android:layout_marginEnd="8dp" />
+
+        <!-- Buttons row -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center">
+
+            <!-- Reset button -->
+            <ImageView
+                android:id="@+id/widget_btn_reset"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_widget_reset"
+                android:background="@drawable/widget_button_bg"
+                android:scaleType="center"
+                android:contentDescription="@string/widget_reset"
+                android:padding="6dp"
+                android:layout_marginEnd="6dp" />
+
+            <!-- Play/Pause button -->
+            <ImageView
+                android:id="@+id/widget_btn_toggle"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_widget_play"
+                android:background="@drawable/widget_button_bg"
+                android:scaleType="center"
+                android:contentDescription="@string/widget_toggle"
+                android:padding="6dp"
+                android:layout_marginEnd="6dp" />
+
+            <!-- Skip button -->
+            <ImageView
+                android:id="@+id/widget_btn_skip"
+                android:layout_width="36dp"
+                android:layout_height="36dp"
+                android:src="@drawable/ic_widget_skip"
+                android:background="@drawable/widget_button_bg"
+                android:scaleType="center"
+                android:contentDescription="@string/widget_skip"
+                android:padding="6dp" />
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>
