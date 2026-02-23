@@ -1,15 +1,22 @@
-import type { Metadata } from 'next'
+import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
-import { Analytics } from '@vercel/analytics/next'
+import { Toaster } from 'sonner'
+import { ConditionalAnalytics } from '@/components/conditional-analytics'
 import './globals.css'
 
 const _geist = Geist({ subsets: ["latin"] });
 const _geistMono = Geist_Mono({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: 'Flip Clock',
-  description: 'Horloge flip style tableau d\'affichage d\'aeroport',
+  title: 'Pomo - Focus Timer',
+  description: 'Beautiful Pomodoro timer with flip clock design',
   generator: 'v0.app',
+  manifest: '/manifest.json',
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: 'black-translucent',
+    title: 'Pomo',
+  },
   icons: {
     icon: [
       {
@@ -29,6 +36,10 @@ export const metadata: Metadata = {
   },
 }
 
+export const viewport: Viewport = {
+  themeColor: '#1a3a5c',
+}
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -38,7 +49,18 @@ export default function RootLayout({
     <html lang="en">
       <body className="font-sans antialiased">
         {children}
-        <Analytics />
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            style: {
+              background: 'rgba(40, 30, 20, 0.8)',
+              backdropFilter: 'blur(24px)',
+              border: '1px solid rgba(255,255,255,0.1)',
+              color: 'white',
+            },
+          }}
+        />
+        <ConditionalAnalytics />
       </body>
     </html>
   )

@@ -124,32 +124,31 @@
   }
 }
 
-/* Flip Clock Background */
-.flip-clock-bg {
-  background: linear-gradient(
-    135deg,
-    #1a3a5c 0%,
-    #8b6914 15%,
-    #c4882a 25%,
-    #e8a830 35%,
-    #f0c040 45%,
-    #e8a830 55%,
-    #c4882a 65%,
-    #e8a830 75%,
-    #f0c040 85%,
-    #8b6914 95%,
-    #1a3a5c 100%
-  );
-  background-size: 200% 200%;
-  min-height: 100svh;
-}
-
 /* Flip Card */
 .flip-card-container {
   position: relative;
-  width: clamp(120px, 22vw, 200px);
-  height: clamp(160px, 30vw, 280px);
+  width: clamp(80px, 15vw, 140px);
+  height: clamp(140px, 25vw, 230px);
   perspective: 800px;
+  filter:
+    drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12))
+    drop-shadow(0 8px 24px rgba(0, 0, 0, 0.16))
+    drop-shadow(0 16px 48px rgba(0, 0, 0, 0.1));
+  transition: filter 0.3s ease;
+}
+
+@media (min-width: 640px) {
+  .flip-card-container {
+    width: clamp(100px, 12vw, 150px);
+    height: clamp(160px, 20vw, 250px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .flip-card-container {
+    width: clamp(120px, 10vw, 160px);
+    height: clamp(190px, 16vw, 270px);
+  }
 }
 
 .flip-card-half {
@@ -158,7 +157,7 @@
   width: 100%;
   height: 50%;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 14px;
 }
 
 .flip-card-top {
@@ -166,7 +165,10 @@
   background: linear-gradient(180deg, #e87850 0%, #f0a050 100%);
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
-  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.12);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    inset 0 -1px 2px rgba(0, 0, 0, 0.06);
 }
 
 .flip-card-bottom {
@@ -175,6 +177,9 @@
   border-top-left-radius: 0;
   border-top-right-radius: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow:
+    inset 0 2px 4px rgba(0, 0, 0, 0.08),
+    inset 0 -1px 0 rgba(255, 255, 255, 0.1);
 }
 
 .flip-card-inner {
@@ -195,11 +200,24 @@
 }
 
 .flip-card-inner span {
-  font-size: clamp(80px, 18vw, 180px);
+  font-size: clamp(52px, 12vw, 120px);
   font-weight: 800;
   color: #b83020;
   line-height: 1;
   font-family: var(--font-sans);
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+@media (min-width: 640px) {
+  .flip-card-inner span {
+    font-size: clamp(64px, 10vw, 120px);
+  }
+}
+
+@media (min-width: 1024px) {
+  .flip-card-inner span {
+    font-size: clamp(80px, 8vw, 140px);
+  }
 }
 
 /* Animated Flaps */
@@ -209,7 +227,7 @@
   width: 100%;
   height: 50%;
   overflow: hidden;
-  border-radius: 12px;
+  border-radius: 14px;
   backface-visibility: hidden;
   z-index: 10;
 }
@@ -219,6 +237,9 @@
   background: linear-gradient(180deg, #e87850 0%, #f0a050 100%);
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
+  box-shadow:
+    inset 0 1px 0 rgba(255, 255, 255, 0.2),
+    0 2px 8px rgba(0, 0, 0, 0.15);
   transform-origin: bottom center;
   animation: flip-top 0.3s cubic-bezier(0.5, 0, 1, 0.5) forwards;
 }
@@ -258,3 +279,5 @@
     transform: rotateX(0deg);
   }
 }
+
+
