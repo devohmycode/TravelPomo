@@ -1,4 +1,21 @@
-import { isNativePlatform } from './platform'
+import { isNativePlatform, isTauriPlatform } from './platform'
+
+// ---- Tauri notifications ----
+
+async function requestTauriPermission(): Promise<boolean> {
+  const { isPermissionGranted, requestPermission } = await import('@tauri-apps/plugin-notification')
+  let granted = await isPermissionGranted()
+  if (!granted) {
+    const permission = await requestPermission()
+    granted = permission === 'granted'
+  }
+  return granted
+}
+
+async function sendTauriNotification(title: string, body: string) {
+  const { sendNotification: tauriNotify } = await import('@tauri-apps/plugin-notification')
+  tauriNotify({ title, body })
+}
 
 // ---- Native (Capacitor) notifications ----
 
@@ -46,6 +63,9 @@ function sendBrowserNotification(title: string, body: string) {
 // ---- Public API (platform-aware) ----
 
 export async function requestNotificationPermission(): Promise<boolean> {
+  if (isTauriPlatform()) {
+    return requestTauriPermission()
+  }
   if (isNativePlatform()) {
     return requestNativePermission()
   }
@@ -53,7 +73,9 @@ export async function requestNotificationPermission(): Promise<boolean> {
 }
 
 export function sendNotification(title: string, body: string) {
-  if (isNativePlatform()) {
+  if (isTauriPlatform()) {
+    sendTauriNotification(title, body).catch(() => {})
+  } else if (isNativePlatform()) {
     sendNativeNotification(title, body).catch(() => {})
   } else {
     sendBrowserNotification(title, body)

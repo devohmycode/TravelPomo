@@ -21,6 +21,9 @@ interface SettingsPanelProps {
   onToggleAutoStartBreak: () => void
   autoStartWork: boolean
   onToggleAutoStartWork: () => void
+  desktopAutoStart?: boolean
+  onToggleDesktopAutoStart?: () => void
+  isDesktop?: boolean
 }
 
 function TogglePill({
@@ -102,6 +105,9 @@ export function SettingsPanel({
   onToggleAutoStartBreak,
   autoStartWork,
   onToggleAutoStartWork,
+  desktopAutoStart,
+  onToggleDesktopAutoStart,
+  isDesktop,
 }: SettingsPanelProps) {
   return (
     <div
@@ -219,6 +225,17 @@ export function SettingsPanel({
             label="Auto Work"
             active={autoStartWork}
             onClick={onToggleAutoStartWork}
+          />
+        </div>
+      )}
+
+      {/* Desktop autostart */}
+      {isDesktop && onToggleDesktopAutoStart && (
+        <div className="grid grid-cols-1 gap-2 mt-3">
+          <TogglePill
+            label="Launch at Startup"
+            active={!!desktopAutoStart}
+            onClick={onToggleDesktopAutoStart}
           />
         </div>
       )}

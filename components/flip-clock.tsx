@@ -38,7 +38,8 @@ import {
   requestNotificationPermission,
 } from "@/lib/notifications"
 import { addSession } from "@/lib/session-store"
-import { isNative, toggleBrowserFullscreen } from "@/lib/fullscreen"
+import { isNative, toggleBrowserFullscreen, toggleTauriFullscreen } from "@/lib/fullscreen"
+import { isTauriPlatform } from "@/lib/platform"
 import { keepAwake, allowSleep } from "@/lib/keep-awake"
 import {
   startBackgroundTimer,
@@ -78,6 +79,20 @@ export function FlipClock() {
   const [autoStartBreak, setAutoStartBreak] = usePersistedState("pomo-autobreak", false)
   const [autoStartWork, setAutoStartWork] = usePersistedState("pomo-autowork", false)
   const [zoomed, setZoomed] = usePersistedState("pomo-zoomed", false)
+  const [desktopAutoStart, setDesktopAutoStart] = usePersistedState("pomo-desktop-autostart", false)
+
+  // Sync desktop autostart with Tauri plugin
+  useEffect(() => {
+    if (!isTauriPlatform()) return
+
+    import("@tauri-apps/plugin-autostart").then(({ enable, disable }) => {
+      if (desktopAutoStart) {
+        enable().catch(() => {})
+      } else {
+        disable().catch(() => {})
+      }
+    })
+  }, [desktopAutoStart])
 
   // Panels
   const [showSettings, setShowSettings] = usePersistedState("pomo-showsettings", false)
@@ -224,7 +239,7 @@ export function FlipClock() {
   currentTaskRef.current = currentTask
 
   useEffect(() => {
-    if (!isNative()) return
+    if (!isNative() || isTauriPlatform()) return
 
     let cancelled = false
     let removeListener: (() => void) | undefined
@@ -274,7 +289,9 @@ export function FlipClock() {
 
   // Fullscreen / Zoom
   const handleFullscreen = useCallback(() => {
-    if (isNative()) {
+    if (isTauriPlatform()) {
+      toggleTauriFullscreen()
+    } else if (isNative()) {
       // On Android: toggle zoomed cards instead of browser fullscreen
       setZoomed((z) => !z)
     } else {
@@ -320,6 +337,40 @@ export function FlipClock() {
     onSetMode: timer.setMode,
     mode: timer.mode,
   })
+
+  // Tauri tray events
+  useEffect(() => {
+    if (!isTauriPlatform()) return
+
+    let unlisten: Array<() => void> = []
+
+    import("@tauri-apps/api/event").then(({ listen }) => {
+      Promise.all([
+        listen("tray-play-pause", () => timer.toggleRunning()),
+        listen("tray-reset", () => timer.reset()),
+        listen("tray-skip", () => timer.skipPhase()),
+      ]).then((fns) => {
+        unlisten = fns
+      })
+    })
+
+    return () => {
+      unlisten.forEach((fn) => fn())
+    }
+  }, [timer.toggleRunning, timer.reset, timer.skipPhase])
+
+  // Update tray tooltip with remaining time
+  useEffect(() => {
+    if (!isTauriPlatform()) return
+    if (timer.mode !== "pomo") return
+
+    import("@tauri-apps/api/core").then(({ invoke }) => {
+      const text = timer.isRunning
+        ? `Pomo - ${timer.displayMinutes}:${timer.displaySeconds}`
+        : "Pomo"
+      invoke("set_tray_tooltip", { text }).catch(() => {})
+    })
+  }, [timer.mode, timer.displayMinutes, timer.displaySeconds, timer.isRunning])
 
   const glowColors = [theme.a, theme.b, theme.a + "cc", theme.b + "cc"]
 
@@ -465,6 +516,9 @@ export function FlipClock() {
             onToggleAutoStartBreak={() => setAutoStartBreak((v) => !v)}
             autoStartWork={autoStartWork}
             onToggleAutoStartWork={() => setAutoStartWork((v) => !v)}
+            desktopAutoStart={desktopAutoStart}
+            onToggleDesktopAutoStart={() => setDesktopAutoStart((v) => !v)}
+            isDesktop={isTauriPlatform()}
           />
         </div>
       )}

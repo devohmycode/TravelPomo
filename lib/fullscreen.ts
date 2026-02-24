@@ -12,3 +12,10 @@ export function toggleBrowserFullscreen(): void {
     document.documentElement.requestFullscreen()
   }
 }
+
+export async function toggleTauriFullscreen() {
+  const { getCurrentWindow } = await import('@tauri-apps/api/window')
+  const win = getCurrentWindow()
+  const isFullscreen = await win.isFullscreen()
+  await win.setFullscreen(!isFullscreen)
+}
