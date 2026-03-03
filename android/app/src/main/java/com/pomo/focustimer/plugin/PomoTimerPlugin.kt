@@ -7,7 +7,8 @@ import com.getcapacitor.PluginMethod
 import com.getcapacitor.annotation.CapacitorPlugin
 import com.pomo.focustimer.data.PomoPreferences
 import com.pomo.focustimer.model.PomoState
-import com.pomo.focustimer.service.PomoTimerService
+import com.pomo.focustimer.service.AmbientAudioService
+import com.pomo.focustimer.timer.PomoTimerManager
 import com.pomo.focustimer.widget.PomoWidgetProvider
 
 @CapacitorPlugin(name = "PomoTimer")
@@ -30,8 +31,7 @@ class PomoTimerPlugin : Plugin() {
             sessionsBeforeLongBreak = data.optInt("sessionsBeforeLongBreak", 4),
             pendingSessions = 0
         )
-        PomoPreferences.save(context, state)
-        PomoWidgetProvider.updateAllWidgets(context)
+        PomoTimerManager.syncFromPlugin(context, state)
         call.resolve()
     }
 
@@ -57,13 +57,25 @@ class PomoTimerPlugin : Plugin() {
 
     @PluginMethod
     fun startService(call: PluginCall) {
-        PomoTimerService.start(context)
+        PomoTimerManager.startTimer(context)
         call.resolve()
     }
 
     @PluginMethod
     fun stopService(call: PluginCall) {
-        PomoTimerService.stop(context)
+        PomoTimerManager.stopTimer(context)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun startAudioService(call: PluginCall) {
+        AmbientAudioService.start(context)
+        call.resolve()
+    }
+
+    @PluginMethod
+    fun stopAudioService(call: PluginCall) {
+        AmbientAudioService.stop(context)
         call.resolve()
     }
 }

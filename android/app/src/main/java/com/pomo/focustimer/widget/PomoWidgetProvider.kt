@@ -6,6 +6,8 @@ import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.widget.RemoteViews
 import com.pomo.focustimer.R
 import com.pomo.focustimer.MainActivity
@@ -34,6 +36,10 @@ class PomoWidgetProvider : AppWidgetProvider() {
     }
 
     companion object {
+        private val handler = Handler(Looper.getMainLooper())
+        @Volatile private var pendingUpdate: Runnable? = null
+        private const val DEBOUNCE_MS = 500L
+
         fun updateWidget(
             context: Context,
             appWidgetManager: AppWidgetManager,
@@ -45,15 +51,22 @@ class PomoWidgetProvider : AppWidgetProvider() {
         }
 
         fun updateAllWidgets(context: Context) {
-            val manager = AppWidgetManager.getInstance(context)
-            val ids = manager.getAppWidgetIds(
-                ComponentName(context, PomoWidgetProvider::class.java)
-            )
-            val state = PomoPreferences.load(context)
-            val views = buildRemoteViews(context, state)
-            for (id in ids) {
-                manager.updateAppWidget(id, views)
+            pendingUpdate?.let { handler.removeCallbacks(it) }
+            val appContext = context.applicationContext
+            val runnable = Runnable {
+                val manager = AppWidgetManager.getInstance(appContext)
+                val ids = manager.getAppWidgetIds(
+                    ComponentName(appContext, PomoWidgetProvider::class.java)
+                )
+                if (ids.isEmpty()) return@Runnable
+                val state = PomoPreferences.load(appContext)
+                val views = buildRemoteViews(appContext, state)
+                for (id in ids) {
+                    manager.updateAppWidget(id, views)
+                }
             }
+            pendingUpdate = runnable
+            handler.postDelayed(runnable, DEBOUNCE_MS)
         }
 
         private fun buildRemoteViews(context: Context, state: PomoState): RemoteViews {

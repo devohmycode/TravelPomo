@@ -16,5 +16,6 @@ data class PomoState(
     val sessionsBeforeLongBreak: Int = 4,
 
     // Background tracking
-    val pendingSessions: Int = 0          // sessions completed while in background
+    val pendingSessions: Int = 0,         // sessions completed while in background
+    val endTimeMillis: Long = 0L          // absolute end time when running
 )

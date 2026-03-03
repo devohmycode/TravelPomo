@@ -1,7 +1,8 @@
 "use client"
 
 import type { PomodoroConfig } from "@/lib/pomodoro"
-import { toggleBrowserFullscreen } from "@/lib/fullscreen"
+
+export type FpsMode = "30" | "60"
 
 type Mode = "clock" | "pomo" | "stopwatch"
 
@@ -24,6 +25,10 @@ interface SettingsPanelProps {
   desktopAutoStart?: boolean
   onToggleDesktopAutoStart?: () => void
   isDesktop?: boolean
+  onFullscreen: () => void
+  fpsMode: FpsMode
+  onFpsModeChange: (mode: FpsMode) => void
+  onReplayTutorial: () => void
 }
 
 function TogglePill({
@@ -108,6 +113,10 @@ export function SettingsPanel({
   desktopAutoStart,
   onToggleDesktopAutoStart,
   isDesktop,
+  onFullscreen,
+  fpsMode,
+  onFpsModeChange,
+  onReplayTutorial,
 }: SettingsPanelProps) {
   return (
     <div
@@ -209,7 +218,20 @@ export function SettingsPanel({
         <TogglePill
           label="Fullscreen"
           active={false}
-          onClick={() => toggleBrowserFullscreen()}
+          onClick={onFullscreen}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <TogglePill
+          label="30 FPS"
+          active={fpsMode === "30"}
+          onClick={() => onFpsModeChange("30")}
+        />
+        <TogglePill
+          label="60 FPS"
+          active={fpsMode === "60"}
+          onClick={() => onFpsModeChange("60")}
         />
       </div>
 
@@ -239,6 +261,15 @@ export function SettingsPanel({
           />
         </div>
       )}
+
+      {/* Tutorial replay */}
+      <div className="grid grid-cols-1 gap-2 mt-3">
+        <TogglePill
+          label="Tutorial"
+          active={false}
+          onClick={onReplayTutorial}
+        />
+      </div>
     </div>
   )
 }

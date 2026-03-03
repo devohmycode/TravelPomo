@@ -10,17 +10,23 @@ import {
   SkipForward,
   Flag,
   BarChart3,
+  Music,
 } from "lucide-react"
 import { toast } from "sonner"
 import { FlipGroup } from "./flip-group"
 import { LiquidButton } from "./ui/liquid-glass-button"
-import { SettingsPanel } from "./settings-panel"
+import { SettingsPanel, type FpsMode } from "./settings-panel"
+import { OnboardingOverlay } from "./onboarding-overlay"
 import { RainCanvas } from "./rain-canvas"
 import { SnowCanvas } from "./snow-canvas"
 import { ProgressRing } from "./progress-ring"
 import { LapList } from "./lap-list"
 import { StatsPanel } from "./stats-panel"
-import { TaskInput } from "./task-input"
+import {
+  AmbientSoundPanel,
+  useAmbientSound,
+  type AmbientSound,
+} from "./ambient-sound-panel"
 import {
   ColorPanel,
   THEMES,
@@ -80,6 +86,17 @@ export function FlipClock() {
   const [autoStartWork, setAutoStartWork] = usePersistedState("pomo-autowork", false)
   const [zoomed, setZoomed] = usePersistedState("pomo-zoomed", false)
   const [desktopAutoStart, setDesktopAutoStart] = usePersistedState("pomo-desktop-autostart", false)
+  const [ambientSound, setAmbientSound] = usePersistedState<AmbientSound>("pomo-ambient", "none")
+  const [ambientVolume, setAmbientVolume] = usePersistedState("pomo-ambient-vol", 50)
+  const [fpsMode, setFpsMode] = usePersistedState<FpsMode>("pomo-fps", "30")
+  const [onboardingDone, setOnboardingDone] = usePersistedState("pomo-onboarding-done", false)
+
+  // Switch to pomo mode for onboarding so all buttons are visible
+  useEffect(() => {
+    if (!onboardingDone && timer.mode !== "pomo") {
+      timer.setMode("pomo")
+    }
+  }, [onboardingDone]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Sync desktop autostart with Tauri plugin
   useEffect(() => {
@@ -98,9 +115,15 @@ export function FlipClock() {
   const [showSettings, setShowSettings] = usePersistedState("pomo-showsettings", false)
   const [showColorPanel, setShowColorPanel] = usePersistedState("pomo-showcolors", false)
   const [showStatsPanel, setShowStatsPanel] = usePersistedState("pomo-showstats", false)
+  const [showAmbientPanel, setShowAmbientPanel] = usePersistedState("pomo-showambient", false)
 
-  // Task
-  const [currentTask, setCurrentTask] = usePersistedState("pomo-task", "")
+  // Ambient sound playback
+  useAmbientSound(ambientSound, ambientVolume)
+
+  // Tasks (list)
+  const [tasks, setTasks] = usePersistedState<string[]>("pomo-tasks", [""])
+  // First task is the "current" one for widget sync
+  const currentTask = tasks[0] || ""
 
   // Timer
   const timer = useTimer(use24Hour)
@@ -185,20 +208,31 @@ export function FlipClock() {
     timer,
   ])
 
-  // Background animation
+  // Background animation (throttled based on fpsMode)
   const bgRef = useRef<HTMLDivElement>(null)
   const rafRef = useRef<number>(0)
+  const lastFrameRef = useRef<number>(0)
+  const fpsModeRef = useRef(fpsMode)
   const theme = THEMES[themeIndex] || THEMES[0]
   const themeRef = useRef(theme)
   const bgTypeRef = useRef(bgType)
   themeRef.current = theme
   bgTypeRef.current = bgType
+  fpsModeRef.current = fpsMode
 
   const animateBg = useCallback(() => {
+    const now = Date.now()
+    const frameMs = fpsModeRef.current === "30" ? 33 : 16
+    if (now - lastFrameRef.current < frameMs) {
+      rafRef.current = requestAnimationFrame(animateBg)
+      return
+    }
+    lastFrameRef.current = now
+
     const el = bgRef.current
     if (!el) return
     const CYCLE = 8000
-    const t = (Date.now() % CYCLE) / CYCLE
+    const t = (now % CYCLE) / CYCLE
     const mix = (Math.sin(t * Math.PI * 2 - Math.PI / 2) + 1) / 2
     const colorA = hexToRgb(themeRef.current.a)
     const colorB = hexToRgb(themeRef.current.b)
@@ -292,37 +326,33 @@ export function FlipClock() {
     if (isTauriPlatform()) {
       toggleTauriFullscreen()
     } else if (isNative()) {
-      // On Android: toggle zoomed cards instead of browser fullscreen
       setZoomed((z) => !z)
     } else {
       toggleBrowserFullscreen()
     }
-  }, [setZoomed])
+    // Close panels when entering fullscreen
+    setShowSettings(false)
+    setShowColorPanel(false)
+    setShowStatsPanel(false)
+    setShowAmbientPanel(false)
+  }, [setZoomed, setShowSettings, setShowColorPanel, setShowStatsPanel, setShowAmbientPanel])
 
   // Panel toggles
   const closeAllPanels = useCallback(() => {
     setShowSettings(false)
     setShowColorPanel(false)
     setShowStatsPanel(false)
-  }, [setShowSettings, setShowColorPanel, setShowStatsPanel])
+    setShowAmbientPanel(false)
+  }, [setShowSettings, setShowColorPanel, setShowStatsPanel, setShowAmbientPanel])
 
   const togglePanel = useCallback(
-    (panel: "settings" | "color" | "stats") => {
-      if (panel === "settings") {
-        setShowSettings((s) => !s)
-        setShowColorPanel(false)
-        setShowStatsPanel(false)
-      } else if (panel === "color") {
-        setShowColorPanel((s) => !s)
-        setShowSettings(false)
-        setShowStatsPanel(false)
-      } else {
-        setShowStatsPanel((s) => !s)
-        setShowSettings(false)
-        setShowColorPanel(false)
-      }
+    (panel: "settings" | "color" | "stats" | "ambient") => {
+      setShowSettings(panel === "settings" ? (s) => !s : false)
+      setShowColorPanel(panel === "color" ? (s) => !s : false)
+      setShowStatsPanel(panel === "stats" ? (s) => !s : false)
+      setShowAmbientPanel(panel === "ambient" ? (s) => !s : false)
     },
-    [setShowSettings, setShowColorPanel, setShowStatsPanel]
+    [setShowSettings, setShowColorPanel, setShowStatsPanel, setShowAmbientPanel]
   )
 
   // Keyboard shortcuts
@@ -394,8 +424,8 @@ export function FlipClock() {
           }}
         />
       )}
-      {overlay === "rain" && <RainCanvas sound={soundEnabled} />}
-      {overlay === "snow" && <SnowCanvas sound={soundEnabled} />}
+      {overlay === "rain" && <RainCanvas sound={soundEnabled} fpsMode={fpsMode} />}
+      {overlay === "snow" && <SnowCanvas sound={soundEnabled} fpsMode={fpsMode} />}
       {overlay === "flutes" && (
         <div
           className="absolute inset-0 pointer-events-none"
@@ -413,7 +443,7 @@ export function FlipClock() {
         style={{ zIndex: 1 }}
       >
         {/* Phase indicator for Pomo mode */}
-        {timer.mode === "pomo" && (
+        {timer.mode === "pomo" && !zoomed && (
           <div className="flex flex-col items-center gap-2">
             <span
               className="text-white/70 text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full"
@@ -442,17 +472,52 @@ export function FlipClock() {
           </div>
         )}
 
-        {/* Task input for Pomo mode */}
-        {timer.mode === "pomo" && (
-          <TaskInput value={currentTask} onChange={setCurrentTask} />
+        {/* Task list for Pomo mode */}
+        {timer.mode === "pomo" && !zoomed && (
+          <div data-tour="task" className="w-full flex flex-col items-center gap-1.5">
+            {tasks.map((task, i) => (
+              <div key={i} className="flex items-center gap-1.5" style={{ width: "clamp(172px, 30vw + 12px, 292px)" }}>
+                <input
+                  type="text"
+                  value={task}
+                  onChange={(e) => {
+                    const next = [...tasks]
+                    next[i] = e.target.value
+                    setTasks(next)
+                  }}
+                  placeholder={i === 0 ? "What are you working on?" : "Another task..."}
+                  className="flex-1 min-w-0 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white/80 text-xs placeholder:text-white/30 outline-none focus:border-white/25 focus:bg-white/8 transition-all duration-200 text-center"
+                  style={{
+                    backdropFilter: "blur(12px)",
+                    WebkitBackdropFilter: "blur(12px)",
+                  }}
+                />
+                {tasks.length > 1 && (
+                  <button
+                    onClick={() => setTasks(tasks.filter((_, j) => j !== i))}
+                    className="shrink-0 size-6 rounded-lg bg-white/5 text-white/30 hover:text-white/60 hover:bg-white/10 transition-all text-xs flex items-center justify-center"
+                  >
+                    ×
+                  </button>
+                )}
+              </div>
+            ))}
+            <button
+              onClick={() => setTasks([...tasks, ""])}
+              className="size-6 rounded-lg bg-white/5 border border-white/10 text-white/30 hover:text-white/60 hover:bg-white/10 transition-all text-sm flex items-center justify-center"
+            >
+              +
+            </button>
+          </div>
         )}
 
         {/* Progress ring wrapper for Pomo mode */}
         <div
+          data-tour="timer"
           className="relative flex flex-col items-center gap-5 sm:gap-8 transition-transform duration-300 origin-center"
           style={zoomed ? { transform: "scale(1.35)" } : undefined}
         >
-          {timer.mode === "pomo" && (
+          {timer.mode === "pomo" && !zoomed && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ margin: "-20px" }}>
               <ProgressRing
                 progress={timer.pomoProgress}
@@ -489,16 +554,16 @@ export function FlipClock() {
         </div>
 
         {/* Lap list for Stopwatch mode */}
-        {timer.mode === "stopwatch" && timer.laps.length > 0 && (
+        {timer.mode === "stopwatch" && timer.laps.length > 0 && !zoomed && (
           <LapList laps={timer.laps} />
         )}
       </div>
 
       {/* Settings panel */}
-      {showSettings && (
+      {showSettings && !zoomed && (
         <div
           className="absolute inset-x-0 flex justify-center px-4"
-          style={{ zIndex: 10, bottom: "18%" }}
+          style={{ zIndex: 10, bottom: "24%" }}
         >
           <SettingsPanel
             mode={timer.mode}
@@ -519,15 +584,22 @@ export function FlipClock() {
             desktopAutoStart={desktopAutoStart}
             onToggleDesktopAutoStart={() => setDesktopAutoStart((v) => !v)}
             isDesktop={isTauriPlatform()}
+            onFullscreen={handleFullscreen}
+            fpsMode={fpsMode}
+            onFpsModeChange={setFpsMode}
+            onReplayTutorial={() => {
+              setOnboardingDone(false)
+              setShowSettings(false)
+            }}
           />
         </div>
       )}
 
       {/* Color panel */}
-      {showColorPanel && (
+      {showColorPanel && !zoomed && (
         <div
           className="absolute inset-x-0 flex justify-center px-4"
-          style={{ zIndex: 10, bottom: "18%" }}
+          style={{ zIndex: 10, bottom: "24%" }}
         >
           <ColorPanel
             activeThemeIndex={themeIndex}
@@ -546,23 +618,40 @@ export function FlipClock() {
       )}
 
       {/* Stats panel */}
-      {showStatsPanel && (
+      {showStatsPanel && !zoomed && (
         <div
           className="absolute inset-x-0 flex justify-center px-4"
-          style={{ zIndex: 10, bottom: "18%" }}
+          style={{ zIndex: 10, bottom: "24%" }}
         >
           <StatsPanel onClose={() => setShowStatsPanel(false)} />
         </div>
       )}
 
+      {/* Ambient sound panel */}
+      {showAmbientPanel && !zoomed && (
+        <div
+          className="absolute inset-x-0 flex justify-center px-4"
+          style={{ zIndex: 10, bottom: "24%" }}
+        >
+          <AmbientSoundPanel
+            activeSound={ambientSound}
+            onSoundChange={setAmbientSound}
+            volume={ambientVolume}
+            onVolumeChange={setAmbientVolume}
+            onClose={() => setShowAmbientPanel(false)}
+          />
+        </div>
+      )}
+
       {/* Buttons */}
       <div
-        className="absolute bottom-[8%] sm:bottom-[6%] inset-x-0 flex justify-center gap-3"
+        className="absolute bottom-[8%] sm:bottom-[6%] inset-x-0 flex flex-wrap justify-center gap-3 px-4"
         style={{ zIndex: 11 }}
       >
         {/* Reset (pomo & stopwatch) */}
-        {timer.mode !== "clock" && (
+        {!zoomed && timer.mode !== "clock" && (
           <LiquidButton
+            data-tour="reset"
             size="icon"
             onClick={timer.reset}
             aria-label="Reset"
@@ -573,8 +662,9 @@ export function FlipClock() {
         )}
 
         {/* Play/Pause */}
-        {timer.mode !== "clock" && (
+        {!zoomed && timer.mode !== "clock" && (
           <LiquidButton
+            data-tour="play"
             size="icon"
             onClick={timer.toggleRunning}
             aria-label={timer.isRunning ? "Pause" : "Start"}
@@ -593,8 +683,9 @@ export function FlipClock() {
         )}
 
         {/* Skip phase (pomo only) */}
-        {timer.mode === "pomo" && (
+        {!zoomed && timer.mode === "pomo" && (
           <LiquidButton
+            data-tour="skip"
             size="icon"
             onClick={timer.skipPhase}
             aria-label="Skip phase"
@@ -605,7 +696,7 @@ export function FlipClock() {
         )}
 
         {/* Lap (stopwatch only) */}
-        {timer.mode === "stopwatch" && timer.isRunning && (
+        {!zoomed && timer.mode === "stopwatch" && timer.isRunning && (
           <LiquidButton
             size="icon"
             onClick={timer.addLap}
@@ -616,59 +707,90 @@ export function FlipClock() {
           </LiquidButton>
         )}
 
-        <LiquidButton
-          size="icon"
-          onClick={() => togglePanel("settings")}
-          aria-label="Settings"
-          className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
-            showSettings
-              ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
-              : ""
-          }`}
-        >
-          <Settings
-            className={`size-4 sm:size-5 ${
-              showSettings ? "text-white" : "text-white/80"
+        {!zoomed && (
+          <LiquidButton
+            data-tour="settings"
+            size="icon"
+            onClick={() => togglePanel("settings")}
+            aria-label="Settings"
+            className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
+              showSettings
+                ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
+                : ""
             }`}
-          />
-        </LiquidButton>
+          >
+            <Settings
+              className={`size-4 sm:size-5 ${
+                showSettings ? "text-white" : "text-white/80"
+              }`}
+            />
+          </LiquidButton>
+        )}
 
-        <LiquidButton
-          size="icon"
-          onClick={() => togglePanel("color")}
-          aria-label="Colors"
-          className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
-            showColorPanel
-              ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
-              : ""
-          }`}
-        >
-          <Droplets
-            className={`size-4 sm:size-5 ${
-              showColorPanel ? "text-white" : "text-white/80"
+        {!zoomed && (
+          <LiquidButton
+            data-tour="colors"
+            size="icon"
+            onClick={() => togglePanel("color")}
+            aria-label="Colors"
+            className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
+              showColorPanel
+                ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
+                : ""
             }`}
-          />
-        </LiquidButton>
+          >
+            <Droplets
+              className={`size-4 sm:size-5 ${
+                showColorPanel ? "text-white" : "text-white/80"
+              }`}
+            />
+          </LiquidButton>
+        )}
+
+        {/* Ambient sound button */}
+        {!zoomed && (
+          <LiquidButton
+            data-tour="ambient"
+            size="icon"
+            onClick={() => togglePanel("ambient")}
+            aria-label="Ambient sounds"
+            className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
+              showAmbientPanel || ambientSound !== "none"
+                ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
+                : ""
+            }`}
+          >
+            <Music
+              className={`size-4 sm:size-5 ${
+                showAmbientPanel || ambientSound !== "none" ? "text-white" : "text-white/80"
+              }`}
+            />
+          </LiquidButton>
+        )}
 
         {/* Stats button */}
-        <LiquidButton
-          size="icon"
-          onClick={() => togglePanel("stats")}
-          aria-label="Statistics"
-          className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
-            showStatsPanel
-              ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
-              : ""
-          }`}
-        >
-          <BarChart3
-            className={`size-4 sm:size-5 ${
-              showStatsPanel ? "text-white" : "text-white/80"
+        {!zoomed && (
+          <LiquidButton
+            data-tour="stats"
+            size="icon"
+            onClick={() => togglePanel("stats")}
+            aria-label="Statistics"
+            className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
+              showStatsPanel
+                ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
+                : ""
             }`}
-          />
-        </LiquidButton>
+          >
+            <BarChart3
+              className={`size-4 sm:size-5 ${
+                showStatsPanel ? "text-white" : "text-white/80"
+              }`}
+            />
+          </LiquidButton>
+        )}
 
         <LiquidButton
+          data-tour="fullscreen"
           size="icon"
           onClick={handleFullscreen}
           aria-label="Fullscreen"
@@ -677,6 +799,14 @@ export function FlipClock() {
           <Maximize className="size-4 sm:size-5 text-white/80" />
         </LiquidButton>
       </div>
+
+      {/* Onboarding tutorial (first launch only) */}
+      {!onboardingDone && timer.mode === "pomo" && (
+        <OnboardingOverlay onComplete={() => {
+          setOnboardingDone(true)
+          closeAllPanels()
+        }} />
+      )}
     </main>
   )
 }

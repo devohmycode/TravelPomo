@@ -26,14 +26,18 @@ interface RainCanvasProps {
   speedMax?: number
   wind?: number
   sound?: boolean
+  fpsMode?: "30" | "60"
 }
 
+const IS_MOBILE = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent)
+
 export function RainCanvas({
-  dropCount = 180,
+  dropCount = IS_MOBILE ? 100 : 180,
   speedMin = 12,
   speedMax = 25,
   wind = 2,
   sound = true,
+  fpsMode = "30",
 }: RainCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const dropsRef = useRef<RainDrop[]>([])
@@ -124,7 +128,17 @@ export function RainCanvas({
       splashesRef.current = []
     }
 
+    let lastFrame = 0
+    const frameMs = fpsMode === "30" ? 33 : 16
+
     const draw = () => {
+      const now = Date.now()
+      if (now - lastFrame < frameMs) {
+        rafRef.current = requestAnimationFrame(draw)
+        return
+      }
+      lastFrame = now
+
       ctx.clearRect(0, 0, w, h)
 
       const drops = dropsRef.current
@@ -191,7 +205,7 @@ export function RainCanvas({
       cancelAnimationFrame(rafRef.current)
       window.removeEventListener("resize", resize)
     }
-  }, [dropCount, speedMin, speedMax, wind])
+  }, [dropCount, speedMin, speedMax, wind, fpsMode])
 
   return (
     <canvas

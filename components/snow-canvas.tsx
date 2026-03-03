@@ -21,15 +21,19 @@ interface SnowCanvasProps {
   speedMin?: number
   speedMax?: number
   sound?: boolean
+  fpsMode?: "30" | "60"
 }
 
+const IS_MOBILE = typeof navigator !== "undefined" && /Android|iPhone|iPad/i.test(navigator.userAgent)
+
 export function SnowCanvas({
-  density = 150,
+  density = IS_MOBILE ? 80 : 150,
   sizeMin = 1,
   sizeMax = 4.5,
   speedMin = 0.2,
   speedMax = 1.4,
   sound = true,
+  fpsMode = "30",
 }: SnowCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const flakesRef = useRef<Snowflake[]>([])
@@ -159,7 +163,17 @@ export function SnowCanvas({
       ctx.fill()
     }
 
+    let lastFrame = 0
+    const frameMs = fpsMode === "30" ? 33 : 16
+
     const animate = () => {
+      const now = Date.now()
+      if (now - lastFrame < frameMs) {
+        rafRef.current = requestAnimationFrame(animate)
+        return
+      }
+      lastFrame = now
+
       ctx.clearRect(0, 0, w, h)
 
       const flakes = flakesRef.current
@@ -197,7 +211,7 @@ export function SnowCanvas({
       cancelAnimationFrame(rafRef.current)
       window.removeEventListener("resize", resize)
     }
-  }, [density, sizeMin, sizeMax, speedMin, speedMax])
+  }, [density, sizeMin, sizeMax, speedMin, speedMax, fpsMode])
 
   return (
     <canvas

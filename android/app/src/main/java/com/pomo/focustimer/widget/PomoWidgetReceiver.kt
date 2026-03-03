@@ -3,7 +3,7 @@ package com.pomo.focustimer.widget
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.pomo.focustimer.service.PomoTimerService
+import com.pomo.focustimer.timer.PomoTimerManager
 
 class PomoWidgetReceiver : BroadcastReceiver() {
 
@@ -14,16 +14,10 @@ class PomoWidgetReceiver : BroadcastReceiver() {
     }
 
     override fun onReceive(context: Context, intent: Intent) {
-        val serviceAction = when (intent.action) {
-            ACTION_TOGGLE -> PomoTimerService.ACTION_TOGGLE
-            ACTION_SKIP -> PomoTimerService.ACTION_SKIP
-            ACTION_RESET -> PomoTimerService.ACTION_RESET
-            else -> return
+        when (intent.action) {
+            ACTION_TOGGLE -> PomoTimerManager.toggleTimer(context)
+            ACTION_SKIP -> PomoTimerManager.skipPhase(context)
+            ACTION_RESET -> PomoTimerManager.resetPhase(context)
         }
-
-        val serviceIntent = Intent(context, PomoTimerService::class.java).apply {
-            action = serviceAction
-        }
-        context.startForegroundService(serviceIntent)
     }
 }

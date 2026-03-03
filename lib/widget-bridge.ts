@@ -39,6 +39,13 @@ const PomoTimer = registerPlugin<PomoTimerPlugin>("PomoTimer")
 let lastSyncTime = 0
 const SYNC_THROTTLE_MS = 1000
 
+// State diffing to skip unchanged syncs
+let lastSyncedRemaining = -1
+let lastSyncedRunning: boolean | null = null
+let lastSyncedPhase = ""
+let lastSyncedCompletedSessions = -1
+let lastSyncedTask = ""
+
 export function syncWidgetState(
   pomo: PomodoroState,
   config: PomodoroConfig,
@@ -46,7 +53,24 @@ export function syncWidgetState(
 ): void {
   const now = Date.now()
   if (now - lastSyncTime < SYNC_THROTTLE_MS) return
+
+  // Skip if nothing meaningful changed
+  if (
+    pomo.remaining === lastSyncedRemaining &&
+    pomo.running === lastSyncedRunning &&
+    pomo.phase === lastSyncedPhase &&
+    pomo.completedSessions === lastSyncedCompletedSessions &&
+    task === lastSyncedTask
+  ) {
+    return
+  }
+
   lastSyncTime = now
+  lastSyncedRemaining = pomo.remaining
+  lastSyncedRunning = pomo.running
+  lastSyncedPhase = pomo.phase
+  lastSyncedCompletedSessions = pomo.completedSessions
+  lastSyncedTask = task
   doSync(pomo, config, task)
 }
 
@@ -73,6 +97,11 @@ export function forceSyncWidgetState(
   task: string
 ): void {
   lastSyncTime = Date.now()
+  lastSyncedRemaining = pomo.remaining
+  lastSyncedRunning = pomo.running
+  lastSyncedPhase = pomo.phase
+  lastSyncedCompletedSessions = pomo.completedSessions
+  lastSyncedTask = task
   doSync(pomo, config, task)
 }
 
