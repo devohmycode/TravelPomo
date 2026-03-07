@@ -1,6 +1,6 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   CloudRain,
   Flame,
@@ -10,11 +10,20 @@ import {
   CloudLightning,
   Volume2,
   VolumeX,
+  Coffee,
+  TreePine,
+  Orbit,
+  Piano,
+  TrainFront,
+  Building2,
+  Wind,
+  Shell,
 } from "lucide-react"
+import { ProBadge } from "./pro-badge"
 
-export type AmbientSound = "none" | "rain" | "fire" | "beach" | "river" | "blizzard" | "thunder"
+export type AmbientSound = "none" | "rain" | "fire" | "beach" | "river" | "blizzard" | "thunder" | "cafe" | "forest" | "space" | "piano" | "train" | "city" | "wind" | "underwater"
 
-const AMBIENT_SOUNDS: { id: AmbientSound; label: string; icon: typeof CloudRain; url: string }[] = [
+const AMBIENT_SOUNDS: { id: AmbientSound; label: string; icon: typeof CloudRain; url: string; premium?: boolean }[] = [
   {
     id: "rain",
     label: "Pluie",
@@ -51,6 +60,63 @@ const AMBIENT_SOUNDS: { id: AmbientSound; label: string; icon: typeof CloudRain;
     icon: CloudLightning,
     url: "https://res.cloudinary.com/dptrimoqv/video/upload/v1772294965/dry-thunder_dn6otj.mp3",
   },
+  // Premium sounds - URLs to be replaced with actual Cloudinary uploads
+  {
+    id: "cafe",
+    label: "Café",
+    icon: Coffee,
+    url: "https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/cafe-ambience_placeholder.mp3",
+    premium: true,
+  },
+  {
+    id: "forest",
+    label: "Forêt",
+    icon: TreePine,
+    url: "https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/forest-ambience_placeholder.mp3",
+    premium: true,
+  },
+  {
+    id: "space",
+    label: "Espace",
+    icon: Orbit,
+    url: "https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/space-ambience_placeholder.mp3",
+    premium: true,
+  },
+  {
+    id: "piano",
+    label: "Piano",
+    icon: Piano,
+    url: "https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/piano-ambience_placeholder.mp3",
+    premium: true,
+  },
+  {
+    id: "train",
+    label: "Train",
+    icon: TrainFront,
+    url: "https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/train-ambience_placeholder.mp3",
+    premium: true,
+  },
+  {
+    id: "city",
+    label: "Ville",
+    icon: Building2,
+    url: "https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/city-ambience_placeholder.mp3",
+    premium: true,
+  },
+  {
+    id: "wind",
+    label: "Vent",
+    icon: Wind,
+    url: "https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/wind-ambience_placeholder.mp3",
+    premium: true,
+  },
+  {
+    id: "underwater",
+    label: "Sous-marin",
+    icon: Shell,
+    url: "https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/underwater-ambience_placeholder.mp3",
+    premium: true,
+  },
 ]
 
 interface AmbientSoundPanelProps {
@@ -59,6 +125,9 @@ interface AmbientSoundPanelProps {
   volume: number
   onVolumeChange: (volume: number) => void
   onClose: () => void
+  isPro: boolean
+  onProNeeded: () => void
+  onPreviewStart?: () => void
 }
 
 export function AmbientSoundPanel({
@@ -67,7 +136,62 @@ export function AmbientSoundPanel({
   volume,
   onVolumeChange,
   onClose,
+  isPro,
+  onProNeeded,
+  onPreviewStart,
 }: AmbientSoundPanelProps) {
+  const previewTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null)
+  const isPreviewingRef = useRef(false)
+
+  // Cleanup on unmount — skip if premium preview is active (panel closed but timer must fire)
+  useEffect(() => {
+    return () => {
+      if (isPreviewingRef.current) return
+      if (previewTimerRef.current) clearTimeout(previewTimerRef.current)
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause()
+        previewAudioRef.current.src = ""
+      }
+    }
+  }, [])
+
+  const handleSoundClick = useCallback(
+    (sound: typeof AMBIENT_SOUNDS[number]) => {
+      const isActive = activeSound === sound.id
+
+      if (sound.premium && !isPro) {
+        // Preview: play for 3.5s, then show popup
+        if (previewAudioRef.current) {
+          previewAudioRef.current.pause()
+          previewAudioRef.current.src = ""
+        }
+        if (previewTimerRef.current) clearTimeout(previewTimerRef.current)
+
+        const audio = new Audio(sound.url)
+        audio.volume = volume / 100
+        audio.loop = false
+        audio.play().catch(() => {})
+        previewAudioRef.current = audio
+
+        isPreviewingRef.current = true
+        onPreviewStart?.()
+
+        previewTimerRef.current = setTimeout(() => {
+          audio.pause()
+          audio.src = ""
+          previewAudioRef.current = null
+          onProNeeded()
+        }, 3500)
+        return
+      }
+
+      onSoundChange(isActive ? "none" : sound.id)
+      onClose()
+    },
+    [activeSound, isPro, volume, onSoundChange, onProNeeded, onPreviewStart]
+  )
+
   return (
     <div
       className="animate-in slide-in-from-bottom-4 fade-in duration-300 w-[calc(100%-2rem)] sm:w-[380px] rounded-2xl border border-white/10 p-5 max-h-[60vh] overflow-y-auto"
@@ -89,9 +213,9 @@ export function AmbientSoundPanel({
           return (
             <button
               key={sound.id}
-              onClick={() => onSoundChange(isActive ? "none" : sound.id)}
+              onClick={() => handleSoundClick(sound)}
               className={`
-                flex flex-col items-center gap-2 rounded-xl px-3 py-3.5 text-sm font-medium transition-all duration-200
+                relative flex flex-col items-center gap-2 rounded-xl px-3 py-3.5 text-sm font-medium transition-all duration-200
                 ${
                   isActive
                     ? "bg-white/20 text-white shadow-inner shadow-white/10 scale-105"
@@ -101,6 +225,7 @@ export function AmbientSoundPanel({
             >
               <Icon className="size-5" />
               <span className="text-xs">{sound.label}</span>
+              <ProBadge show={!!sound.premium && !isPro} />
             </button>
           )
         })}

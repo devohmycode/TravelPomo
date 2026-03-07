@@ -35,32 +35,19 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- Widget Provider -->
+        <!-- Notification Action Receiver (play/pause from notification) -->
         <receiver
-            android:name=".widget.PomoWidgetProvider"
-            android:exported="true">
+            android:name=".timer.NotificationActionReceiver"
+            android:exported="false">
             <intent-filter>
-                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
-            </intent-filter>
-            <meta-data
-                android:name="android.appwidget.provider"
-                android:resource="@xml/pomo_widget_info" />
-        </receiver>
-
-        <!-- Widget Button Receiver -->
-        <receiver
-            android:name=".widget.PomoWidgetReceiver"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.pomo.focustimer.WIDGET_TOGGLE" />
-                <action android:name="com.pomo.focustimer.WIDGET_SKIP" />
-                <action android:name="com.pomo.focustimer.WIDGET_RESET" />
+                <action android:name="com.pomo.focustimer.NOTIF_PAUSE" />
+                <action android:name="com.pomo.focustimer.NOTIF_PLAY" />
             </intent-filter>
         </receiver>
 
-        <!-- Boot Receiver -->
+        <!-- Boot Receiver (restore timer after reboot) -->
         <receiver
-            android:name=".widget.BootReceiver"
+            android:name=".timer.BootReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
@@ -81,6 +68,7 @@
     </application>
 
     <!-- Permissions -->
+    <uses-permission android:name="com.android.vending.BILLING" />
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />

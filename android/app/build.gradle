@@ -8,8 +8,8 @@ android {
         applicationId "com.pomo.focustimer"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 6
-        versionName "1.5"
+        versionCode 9
+        versionName "1.8"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -50,6 +50,7 @@ dependencies {
     androidTestImplementation "androidx.test.ext:junit:$androidxJunitVersion"
     androidTestImplementation "androidx.test.espresso:espresso-core:$androidxEspressoCoreVersion"
     implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.22"
+    implementation "com.android.billingclient:billing-ktx:7.1.1"
     implementation project(':capacitor-cordova-android-plugins')
 }
 

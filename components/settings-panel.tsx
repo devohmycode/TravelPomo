@@ -1,10 +1,20 @@
 "use client"
 
 import type { PomodoroConfig } from "@/lib/pomodoro"
+import { ProBadge } from "./pro-badge"
 
 export type FpsMode = "30" | "60"
 
 type Mode = "clock" | "pomo" | "stopwatch"
+
+export type TimerSound = "default" | "gong" | "chime" | "bell"
+
+const TIMER_SOUNDS: { value: TimerSound; label: string; premium: boolean }[] = [
+  { value: "default", label: "Default", premium: false },
+  { value: "gong", label: "Gong", premium: true },
+  { value: "chime", label: "Chime", premium: true },
+  { value: "bell", label: "Bell", premium: true },
+]
 
 interface SettingsPanelProps {
   mode: Mode
@@ -28,6 +38,10 @@ interface SettingsPanelProps {
   onFullscreen: () => void
   fpsMode: FpsMode
   onFpsModeChange: (mode: FpsMode) => void
+  timerSound: TimerSound
+  onTimerSoundChange: (sound: TimerSound) => void
+  isPro: boolean
+  onProNeeded: () => void
   onReplayTutorial: () => void
 }
 
@@ -35,16 +49,20 @@ function TogglePill({
   label,
   active,
   onClick,
+  premium,
+  isPro,
 }: {
   label: string
   active: boolean
   onClick: () => void
+  premium?: boolean
+  isPro?: boolean
 }) {
   return (
     <button
       onClick={onClick}
       className={`
-        rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200
+        relative rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200
         ${
           active
             ? "bg-white/20 text-white shadow-inner shadow-white/10"
@@ -53,6 +71,7 @@ function TogglePill({
       `}
     >
       {label}
+      <ProBadge show={!!premium && !isPro} />
     </button>
   )
 }
@@ -116,6 +135,10 @@ export function SettingsPanel({
   onFullscreen,
   fpsMode,
   onFpsModeChange,
+  timerSound,
+  onTimerSoundChange,
+  isPro,
+  onProNeeded,
   onReplayTutorial,
 }: SettingsPanelProps) {
   return (
@@ -260,6 +283,31 @@ export function SettingsPanel({
             onClick={onToggleDesktopAutoStart}
           />
         </div>
+      )}
+
+      {/* Timer Sound (Pomo mode) */}
+      {mode === "pomo" && (
+        <>
+          <p className="text-white/80 text-sm font-semibold mb-2 mt-4">Timer Sound</p>
+          <div className="grid grid-cols-2 gap-2">
+            {TIMER_SOUNDS.map((s) => (
+              <TogglePill
+                key={s.value}
+                label={s.label}
+                active={timerSound === s.value}
+                onClick={() => {
+                  if (s.premium && !isPro) {
+                    onProNeeded()
+                  } else {
+                    onTimerSoundChange(s.value)
+                  }
+                }}
+                premium={s.premium}
+                isPro={isPro}
+              />
+            ))}
+          </div>
+        </>
       )}
 
       {/* Tutorial replay */}

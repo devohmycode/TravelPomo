@@ -1,9 +1,8 @@
-package com.pomo.focustimer.widget
+package com.pomo.focustimer.timer
 
 import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import com.pomo.focustimer.timer.PomoTimerManager
 
 class BootReceiver : BroadcastReceiver() {
 

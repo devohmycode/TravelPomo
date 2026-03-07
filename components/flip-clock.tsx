@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import {
   Maximize,
   Timer,
@@ -15,10 +15,24 @@ import {
 import { toast } from "sonner"
 import { FlipGroup } from "./flip-group"
 import { LiquidButton } from "./ui/liquid-glass-button"
-import { SettingsPanel, type FpsMode } from "./settings-panel"
+import { SettingsPanel, type FpsMode, type TimerSound } from "./settings-panel"
 import { OnboardingOverlay } from "./onboarding-overlay"
 import { RainCanvas } from "./rain-canvas"
 import { SnowCanvas } from "./snow-canvas"
+import { FirefliesCanvas } from "./fireflies-canvas"
+import { SakuraCanvas } from "./sakura-canvas"
+import { StarsCanvas } from "./stars-canvas"
+import { BokehCanvas } from "./bokeh-canvas"
+import { NorthernLightsCanvas } from "./northern-lights-canvas"
+import { BubblesCanvas } from "./bubbles-canvas"
+import { DustMotesCanvas } from "./dust-motes-canvas"
+import { MatrixCanvas } from "./matrix-canvas"
+import { MeshBackground } from "./mesh-background"
+import { WavesBackground } from "./waves-background"
+import { NoiseBackground } from "./noise-background"
+import { PlasmaBackground } from "./plasma-background"
+import { ParallaxBackground } from "./parallax-background"
+import { ProPurchasePopup } from "./pro-purchase-popup"
 import { ProgressRing } from "./progress-ring"
 import { LapList } from "./lap-list"
 import { StatsPanel } from "./stats-panel"
@@ -33,8 +47,11 @@ import {
   type BackgroundType,
   type OverlayEffect,
   type GlowMode,
+  type ClockFont,
+  type CardStyle,
 } from "./color-panel"
 import { usePersistedState } from "@/hooks/use-persisted-state"
+import { usePro } from "@/hooks/use-pro"
 import { useTimer } from "@/hooks/use-timer"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { getPhaseLabel } from "@/lib/pomodoro"
@@ -73,15 +90,27 @@ function lerpColor(
 }
 
 export function FlipClock() {
+  // Pro state
+  const { isPro, purchasePro, restorePurchase } = usePro()
+  const [showProPopup, setShowProPopup] = useState(false)
+  const [proPreview, setProPreview] = useState(false)
+
   // Persisted settings
   const [use24Hour, setUse24Hour] = usePersistedState("pomo-24h", true)
   const [showSeconds, setShowSeconds] = usePersistedState("pomo-seconds", true)
   const [soundEnabled, setSoundEnabled] = usePersistedState("pomo-sound", true)
   const [themeIndex, setThemeIndex] = usePersistedState("pomo-theme", 0)
+  const [customColorA, setCustomColorA] = usePersistedState("pomo-custom-a", "#1a3a5c")
+  const [customColorB, setCustomColorB] = usePersistedState("pomo-custom-b", "#e8a830")
   const [bgType, setBgType] = usePersistedState<BackgroundType>("pomo-bg", "linear")
   const [overlay, setOverlay] = usePersistedState<OverlayEffect>("pomo-overlay", "none")
   const [glowEnabled, setGlowEnabled] = usePersistedState("pomo-glow", false)
   const [glowMode, setGlowMode] = usePersistedState<GlowMode>("pomo-glowmode", "rotate")
+  const [clockFont, setClockFont] = usePersistedState<ClockFont>("pomo-clockfont", "default")
+  const [cardStyle, setCardStyle] = usePersistedState<CardStyle>("pomo-cardstyle", "classic")
+  const [customCardColor, setCustomCardColor] = usePersistedState("pomo-custom-card", "#e87850")
+  const [customCardText, setCustomCardText] = usePersistedState("pomo-custom-card-text", "#b83020")
+  const [timerSound, setTimerSound] = usePersistedState<TimerSound>("pomo-timersound", "default")
   const [autoStartBreak, setAutoStartBreak] = usePersistedState("pomo-autobreak", false)
   const [autoStartWork, setAutoStartWork] = usePersistedState("pomo-autowork", false)
   const [zoomed, setZoomed] = usePersistedState("pomo-zoomed", false)
@@ -128,6 +157,51 @@ export function FlipClock() {
   // Timer
   const timer = useTimer(use24Hour)
 
+  // Stats refresh key — incremented each time a session is recorded
+  const [statsKey, setStatsKey] = useState(0)
+
+  // Record a session and bump the refresh key
+  const recordAndRefresh = useCallback(
+    (data: Parameters<typeof addSession>[0]) => {
+      addSession(data)
+      setStatsKey((k) => k + 1)
+    },
+    []
+  )
+
+  // Save partial work session (reset/skip/mode-change while working)
+  const savePartialSession = useCallback(() => {
+    if (timer.mode !== "pomo" || timer.pomo.phase !== "work") return
+    const elapsedSeconds = timer.pomo.totalSeconds - timer.pomo.remaining
+    const elapsedMinutes = Math.round(elapsedSeconds / 60)
+    if (elapsedMinutes < 1) return
+    recordAndRefresh({
+      task: currentTask || "Untitled",
+      phase: "work",
+      durationMinutes: elapsedMinutes,
+      completedAt: new Date().toISOString(),
+    })
+  }, [timer.mode, timer.pomo.phase, timer.pomo.totalSeconds, timer.pomo.remaining, currentTask, recordAndRefresh])
+
+  // Wrapped actions that save partial sessions first
+  const handleReset = useCallback(() => {
+    savePartialSession()
+    timer.reset()
+  }, [savePartialSession, timer])
+
+  const handleSkip = useCallback(() => {
+    savePartialSession()
+    timer.skipPhase()
+  }, [savePartialSession, timer])
+
+  const handleModeChange = useCallback(
+    (mode: "clock" | "pomo" | "stopwatch") => {
+      savePartialSession()
+      timer.setMode(mode)
+    },
+    [savePartialSession, timer]
+  )
+
   // Keep widget bridge taskRef in sync
   useEffect(() => {
     timer.taskRef.current = currentTask
@@ -162,8 +236,8 @@ export function FlipClock() {
       const phaseLabel = getPhaseLabel(phase)
 
       if (phase === "work") {
-        // Record session
-        addSession({
+        // Record completed session
+        recordAndRefresh({
           task: currentTask || "Untitled",
           phase: "work",
           durationMinutes: timer.pomoConfig.workMinutes,
@@ -185,7 +259,7 @@ export function FlipClock() {
       }
 
       if (soundEnabled) {
-        playAlarmSound()
+        playAlarmSound(timerSound)
       }
 
       // Auto-advance phase
@@ -203,6 +277,7 @@ export function FlipClock() {
   }, [
     currentTask,
     soundEnabled,
+    timerSound,
     autoStartBreak,
     autoStartWork,
     timer,
@@ -213,7 +288,9 @@ export function FlipClock() {
   const rafRef = useRef<number>(0)
   const lastFrameRef = useRef<number>(0)
   const fpsModeRef = useRef(fpsMode)
-  const theme = THEMES[themeIndex] || THEMES[0]
+  const theme = themeIndex === -1
+    ? { a: customColorA, b: customColorB, label: "Custom" }
+    : THEMES[themeIndex] || THEMES[0]
   const themeRef = useRef(theme)
   const bgTypeRef = useRef(bgType)
   themeRef.current = theme
@@ -230,7 +307,10 @@ export function FlipClock() {
     lastFrameRef.current = now
 
     const el = bgRef.current
-    if (!el) return
+    if (!el) {
+      rafRef.current = requestAnimationFrame(animateBg)
+      return
+    }
     const CYCLE = 8000
     const t = (now % CYCLE) / CYCLE
     const mix = (Math.sin(t * Math.PI * 2 - Math.PI / 2) + 1) / 2
@@ -297,7 +377,7 @@ export function FlipClock() {
           if (nativeState) {
             if (nativeState.pendingSessions > 0) {
               for (let i = 0; i < nativeState.pendingSessions; i++) {
-                addSession({
+                recordAndRefresh({
                   task: task || "Untitled",
                   phase: "work",
                   durationMinutes: t.pomoConfig.workMinutes,
@@ -358,13 +438,13 @@ export function FlipClock() {
   // Keyboard shortcuts
   useKeyboardShortcuts({
     onToggleRunning: timer.toggleRunning,
-    onReset: timer.reset,
+    onReset: handleReset,
     onLap: timer.addLap,
     onFullscreen: handleFullscreen,
     onToggleSettings: () => togglePanel("settings"),
     onToggleColors: () => togglePanel("color"),
     onClosePanel: closeAllPanels,
-    onSetMode: timer.setMode,
+    onSetMode: handleModeChange,
     mode: timer.mode,
   })
 
@@ -377,8 +457,8 @@ export function FlipClock() {
     import("@tauri-apps/api/event").then(({ listen }) => {
       Promise.all([
         listen("tray-play-pause", () => timer.toggleRunning()),
-        listen("tray-reset", () => timer.reset()),
-        listen("tray-skip", () => timer.skipPhase()),
+        listen("tray-reset", () => handleReset()),
+        listen("tray-skip", () => handleSkip()),
       ]).then((fns) => {
         unlisten = fns
       })
@@ -387,7 +467,7 @@ export function FlipClock() {
     return () => {
       unlisten.forEach((fn) => fn())
     }
-  }, [timer.toggleRunning, timer.reset, timer.skipPhase])
+  }, [timer.toggleRunning, handleReset, handleSkip])
 
   // Update tray tooltip with remaining time
   useEffect(() => {
@@ -409,7 +489,19 @@ export function FlipClock() {
   return (
     <main className="relative min-h-svh overflow-hidden">
       {/* Animated background */}
-      <div ref={bgRef} className="absolute inset-0" style={{ zIndex: 0 }} />
+      {bgType === "mesh" ? (
+        <MeshBackground colorA={theme.a} colorB={theme.b} fpsMode={fpsMode} />
+      ) : bgType === "waves" ? (
+        <WavesBackground colorA={theme.a} colorB={theme.b} fpsMode={fpsMode} />
+      ) : bgType === "noise" ? (
+        <NoiseBackground colorA={theme.a} colorB={theme.b} fpsMode={fpsMode} />
+      ) : bgType === "plasma" ? (
+        <PlasmaBackground colorA={theme.a} colorB={theme.b} fpsMode={fpsMode} />
+      ) : bgType === "parallax" ? (
+        <ParallaxBackground colorA={theme.a} colorB={theme.b} fpsMode={fpsMode} />
+      ) : (
+        <div ref={bgRef} className="absolute inset-0" style={{ zIndex: 0 }} />
+      )}
 
       {/* Overlay effects */}
       {overlay === "frost" && (
@@ -436,6 +528,14 @@ export function FlipClock() {
           }}
         />
       )}
+      {overlay === "fireflies" && <FirefliesCanvas fpsMode={fpsMode} />}
+      {overlay === "sakura" && <SakuraCanvas fpsMode={fpsMode} />}
+      {overlay === "stars" && <StarsCanvas fpsMode={fpsMode} />}
+      {overlay === "bokeh" && <BokehCanvas colorA={theme.a} colorB={theme.b} fpsMode={fpsMode} />}
+      {overlay === "aurora" && <NorthernLightsCanvas fpsMode={fpsMode} />}
+      {overlay === "bubbles" && <BubblesCanvas fpsMode={fpsMode} />}
+      {overlay === "dust" && <DustMotesCanvas fpsMode={fpsMode} />}
+      {overlay === "matrix" && <MatrixCanvas fpsMode={fpsMode} />}
 
       {/* Clock display */}
       <div
@@ -514,8 +614,19 @@ export function FlipClock() {
         {/* Progress ring wrapper for Pomo mode */}
         <div
           data-tour="timer"
+          data-font={clockFont}
+          data-card-style={cardStyle}
           className="relative flex flex-col items-center gap-5 sm:gap-8 transition-transform duration-300 origin-center"
-          style={zoomed ? { transform: "scale(1.35)" } : undefined}
+          style={{
+            ...(zoomed ? { transform: "scale(1.35)" } : {}),
+            ...(cardStyle === "custom" ? {
+              "--custom-card-top-from": customCardColor,
+              "--custom-card-top-to": `${customCardColor}dd`,
+              "--custom-card-bottom-from": `${customCardColor}dd`,
+              "--custom-card-bottom-to": `${customCardColor}bb`,
+              "--custom-card-text": customCardText,
+            } as React.CSSProperties : {}),
+          }}
         >
           {timer.mode === "pomo" && !zoomed && (
             <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ margin: "-20px" }}>
@@ -559,6 +670,15 @@ export function FlipClock() {
         )}
       </div>
 
+      {/* Backdrop to close panels on tap outside */}
+      {(showSettings || showColorPanel || showStatsPanel || showAmbientPanel) && !zoomed && (
+        <div
+          className="absolute inset-0"
+          style={{ zIndex: 9 }}
+          onClick={closeAllPanels}
+        />
+      )}
+
       {/* Settings panel */}
       {showSettings && !zoomed && (
         <div
@@ -567,7 +687,7 @@ export function FlipClock() {
         >
           <SettingsPanel
             mode={timer.mode}
-            onModeChange={timer.setMode}
+            onModeChange={handleModeChange}
             showSeconds={showSeconds}
             onToggleSeconds={() => setShowSeconds((s) => !s)}
             soundEnabled={soundEnabled}
@@ -587,6 +707,10 @@ export function FlipClock() {
             onFullscreen={handleFullscreen}
             fpsMode={fpsMode}
             onFpsModeChange={setFpsMode}
+            timerSound={timerSound}
+            onTimerSoundChange={setTimerSound}
+            isPro={isPro}
+            onProNeeded={() => setShowProPopup(true)}
             onReplayTutorial={() => {
               setOnboardingDone(false)
               setShowSettings(false)
@@ -604,6 +728,10 @@ export function FlipClock() {
           <ColorPanel
             activeThemeIndex={themeIndex}
             onThemeChange={setThemeIndex}
+            customColorA={customColorA}
+            customColorB={customColorB}
+            onCustomColorAChange={setCustomColorA}
+            onCustomColorBChange={setCustomColorB}
             backgroundType={bgType}
             onBackgroundTypeChange={setBgType}
             overlayEffect={overlay}
@@ -612,7 +740,18 @@ export function FlipClock() {
             onGlowEnabledChange={setGlowEnabled}
             glowMode={glowMode}
             onGlowModeChange={setGlowMode}
+            clockFont={clockFont}
+            onClockFontChange={setClockFont}
+            cardStyle={cardStyle}
+            onCardStyleChange={setCardStyle}
+            customCardColor={customCardColor}
+            customCardText={customCardText}
+            onCustomCardColorChange={setCustomCardColor}
+            onCustomCardTextChange={setCustomCardText}
             onClose={() => setShowColorPanel(false)}
+            isPro={isPro}
+            onProNeeded={() => { setProPreview(false); setShowProPopup(true) }}
+            onPreviewStart={() => { setShowColorPanel(false); setProPreview(true) }}
           />
         </div>
       )}
@@ -623,7 +762,19 @@ export function FlipClock() {
           className="absolute inset-x-0 flex justify-center px-4"
           style={{ zIndex: 10, bottom: "24%" }}
         >
-          <StatsPanel onClose={() => setShowStatsPanel(false)} />
+          <StatsPanel
+            onClose={() => setShowStatsPanel(false)}
+            themeA={theme.a}
+            themeB={theme.b}
+            isPro={isPro}
+            onProNeeded={() => setShowProPopup(true)}
+            refreshKey={statsKey}
+            liveElapsedMinutes={
+              timer.mode === "pomo" && timer.pomo.phase === "work" && timer.isRunning
+                ? Math.floor((timer.pomo.totalSeconds - timer.pomo.remaining) / 60)
+                : 0
+            }
+          />
         </div>
       )}
 
@@ -639,13 +790,16 @@ export function FlipClock() {
             volume={ambientVolume}
             onVolumeChange={setAmbientVolume}
             onClose={() => setShowAmbientPanel(false)}
+            isPro={isPro}
+            onProNeeded={() => { setProPreview(false); setShowProPopup(true) }}
+            onPreviewStart={() => { setShowAmbientPanel(false); setProPreview(true) }}
           />
         </div>
       )}
 
       {/* Buttons */}
       <div
-        className="absolute bottom-[8%] sm:bottom-[6%] inset-x-0 flex flex-wrap justify-center gap-3 px-4"
+        className={`absolute bottom-[8%] sm:bottom-[6%] inset-x-0 flex flex-wrap justify-center gap-3 px-4 transition-opacity duration-300 ${proPreview ? "opacity-0 pointer-events-none" : ""}`}
         style={{ zIndex: 11 }}
       >
         {/* Reset (pomo & stopwatch) */}
@@ -653,7 +807,7 @@ export function FlipClock() {
           <LiquidButton
             data-tour="reset"
             size="icon"
-            onClick={timer.reset}
+            onClick={handleReset}
             aria-label="Reset"
             className="rounded-full size-12 sm:size-14"
           >
@@ -687,7 +841,7 @@ export function FlipClock() {
           <LiquidButton
             data-tour="skip"
             size="icon"
-            onClick={timer.skipPhase}
+            onClick={handleSkip}
             aria-label="Skip phase"
             className="rounded-full size-12 sm:size-14"
           >
@@ -799,6 +953,14 @@ export function FlipClock() {
           <Maximize className="size-4 sm:size-5 text-white/80" />
         </LiquidButton>
       </div>
+
+      {/* Pro purchase popup */}
+      <ProPurchasePopup
+        open={showProPopup}
+        onClose={() => setShowProPopup(false)}
+        onPurchase={purchasePro}
+        onRestore={restorePurchase}
+      />
 
       {/* Onboarding tutorial (first launch only) */}
       {!onboardingDone && timer.mode === "pomo" && (

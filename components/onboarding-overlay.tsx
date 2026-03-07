@@ -80,7 +80,7 @@ export function OnboardingOverlay({ onComplete }: OnboardingOverlayProps) {
   const current = TOUR_STEPS[step]
 
   const measureTarget = useCallback(() => {
-    if (!current) return
+    if (!current) return false
     const el = document.querySelector(`[data-tour="${current.target}"]`)
     if (el) {
       const r = el.getBoundingClientRect()
@@ -91,24 +91,47 @@ export function OnboardingOverlay({ onComplete }: OnboardingOverlayProps) {
         width: r.width + pad * 2,
         height: r.height + pad * 2,
       })
-    } else {
-      setRect(null)
+      return true
     }
+    setRect(null)
+    return false
   }, [current])
 
-  // Measure on step change and on resize
+  // Measure on step change and on resize — skip missing targets
   useEffect(() => {
-    // Small delay to ensure DOM is ready on first mount
-    const timer = setTimeout(() => {
-      measureTarget()
-      setVisible(true)
-    }, 300)
+    let attempts = 0
+    const maxAttempts = 5
+
+    const tryMeasure = () => {
+      const found = measureTarget()
+      if (found) {
+        setVisible(true)
+        return
+      }
+      attempts++
+      if (attempts < maxAttempts) {
+        // Retry after a short delay for slow DOM
+        retryTimer = setTimeout(tryMeasure, 200)
+      } else {
+        // Target not found after retries — skip this step
+        if (step < TOUR_STEPS.length - 1) {
+          setStep((s) => s + 1)
+        } else {
+          onComplete()
+        }
+      }
+    }
+
+    let retryTimer: ReturnType<typeof setTimeout>
+    const initialTimer = setTimeout(tryMeasure, 300)
+
     window.addEventListener("resize", measureTarget)
     return () => {
-      clearTimeout(timer)
+      clearTimeout(initialTimer)
+      clearTimeout(retryTimer)
       window.removeEventListener("resize", measureTarget)
     }
-  }, [measureTarget])
+  }, [measureTarget, step, onComplete])
 
   const next = useCallback(() => {
     setVisible(false)
@@ -138,10 +161,13 @@ export function OnboardingOverlay({ onComplete }: OnboardingOverlayProps) {
       style={{
         zIndex: 9999,
         opacity: visible ? 1 : 0,
+        pointerEvents: visible ? "auto" : "none",
+        touchAction: "manipulation",
       }}
+      onClick={next}
     >
-      {/* Dark overlay with cutout */}
-      <svg className="absolute inset-0 w-full h-full">
+      {/* Dark overlay with cutout (visual only — clicks handled by parent div) */}
+      <svg className="absolute inset-0 w-full h-full pointer-events-none">
         <defs>
           <mask id="spotlight-mask">
             <rect width="100%" height="100%" fill="white" />
@@ -183,6 +209,7 @@ export function OnboardingOverlay({ onComplete }: OnboardingOverlayProps) {
       {rect && (
         <div
           className="absolute flex flex-col gap-2 px-5 py-4 rounded-2xl border border-white/15 max-w-[300px] transition-all duration-300"
+          onClick={(e) => e.stopPropagation()}
           style={{
             background: "rgba(30, 25, 20, 0.85)",
             backdropFilter: "blur(20px)",

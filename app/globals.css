@@ -1,3 +1,4 @@
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Caveat:wght@700&family=Press+Start+2P&family=Rajdhani:wght@700&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -124,8 +125,14 @@
   }
 }
 
-/* Flip Card */
+/* Flip Card — default (classic orange), inheritable for custom */
 .flip-card-container {
+  --card-top-from: var(--custom-card-top-from, #e87850);
+  --card-top-to: var(--custom-card-top-to, #f0a050);
+  --card-bottom-from: var(--custom-card-bottom-from, #f0a050);
+  --card-bottom-to: var(--custom-card-bottom-to, #e8b060);
+  --card-text: var(--custom-card-text, #b83020);
+
   position: relative;
   width: clamp(80px, 15vw, 140px);
   height: clamp(140px, 25vw, 230px);
@@ -162,7 +169,7 @@
 
 .flip-card-top {
   top: 0;
-  background: linear-gradient(180deg, #e87850 0%, #f0a050 100%);
+  background: linear-gradient(180deg, var(--card-top-from) 0%, var(--card-top-to) 100%);
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
   border-bottom: 1px solid rgba(0, 0, 0, 0.12);
@@ -173,7 +180,7 @@
 
 .flip-card-bottom {
   bottom: 0;
-  background: linear-gradient(180deg, #f0a050 0%, #e8b060 100%);
+  background: linear-gradient(180deg, var(--card-bottom-from) 0%, var(--card-bottom-to) 100%);
   border-top-left-radius: 0;
   border-top-right-radius: 0;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
@@ -202,7 +209,7 @@
 .flip-card-inner span {
   font-size: clamp(52px, 12vw, 120px);
   font-weight: 800;
-  color: #b83020;
+  color: var(--card-text);
   line-height: 1;
   font-family: var(--font-sans);
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
@@ -234,7 +241,7 @@
 
 .flip-card-animated-top {
   top: 0;
-  background: linear-gradient(180deg, #e87850 0%, #f0a050 100%);
+  background: linear-gradient(180deg, var(--card-top-from) 0%, var(--card-top-to) 100%);
   border-bottom-left-radius: 0;
   border-bottom-right-radius: 0;
   box-shadow:
@@ -250,7 +257,7 @@
 
 .flip-card-animated-bottom {
   bottom: 0;
-  background: linear-gradient(180deg, #f0a050 0%, #e8b060 100%);
+  background: linear-gradient(180deg, var(--card-bottom-from) 0%, var(--card-bottom-to) 100%);
   border-top-left-radius: 0;
   border-top-right-radius: 0;
   transform-origin: top center;
@@ -280,4 +287,101 @@
   }
 }
 
+/* Clock Font overrides */
+[data-font="lcd"] .flip-card-inner span {
+  font-family: 'Orbitron', monospace;
+  letter-spacing: 2px;
+}
 
+[data-font="handwritten"] .flip-card-inner span {
+  font-family: 'Caveat', cursive;
+  font-weight: 700;
+}
+
+[data-font="pixel"] .flip-card-inner span {
+  font-family: 'Press Start 2P', monospace;
+  font-size: clamp(36px, 8vw, 80px);
+}
+
+@media (min-width: 640px) {
+  [data-font="pixel"] .flip-card-inner span {
+    font-size: clamp(44px, 7vw, 80px);
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-font="pixel"] .flip-card-inner span {
+    font-size: clamp(52px, 5.5vw, 90px);
+  }
+}
+
+[data-font="thin"] .flip-card-inner span {
+  font-family: 'Rajdhani', sans-serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+/* Card Style overrides (premium) */
+[data-card-style="midnight"] .flip-card-container {
+  --card-top-from: #1a1a3e;
+  --card-top-to: #2a2a5e;
+  --card-bottom-from: #2a2a5e;
+  --card-bottom-to: #3a3a7e;
+  --card-text: #8b8bff;
+}
+
+[data-card-style="ocean"] .flip-card-container {
+  --card-top-from: #0a3d5c;
+  --card-top-to: #0d5a8a;
+  --card-bottom-from: #0d5a8a;
+  --card-bottom-to: #1276a8;
+  --card-text: #4ec8f0;
+}
+
+[data-card-style="ruby"] .flip-card-container {
+  --card-top-from: #6b1030;
+  --card-top-to: #8b1840;
+  --card-bottom-from: #8b1840;
+  --card-bottom-to: #a82050;
+  --card-text: #ff6090;
+}
+
+[data-card-style="emerald"] .flip-card-container {
+  --card-top-from: #0a3a2a;
+  --card-top-to: #0d5a3e;
+  --card-bottom-from: #0d5a3e;
+  --card-bottom-to: #108050;
+  --card-text: #40e890;
+}
+
+[data-card-style="amethyst"] .flip-card-container {
+  --card-top-from: #3a1860;
+  --card-top-to: #502080;
+  --card-bottom-from: #502080;
+  --card-bottom-to: #6830a0;
+  --card-text: #c87cf0;
+}
+
+[data-card-style="slate"] .flip-card-container {
+  --card-top-from: #2a2a30;
+  --card-top-to: #3a3a42;
+  --card-bottom-from: #3a3a42;
+  --card-bottom-to: #4a4a55;
+  --card-text: #b0b0c0;
+}
+
+[data-card-style="gold"] .flip-card-container {
+  --card-top-from: #4a3a10;
+  --card-top-to: #6a5020;
+  --card-bottom-from: #6a5020;
+  --card-bottom-to: #8a6830;
+  --card-text: #ffd060;
+}
+
+[data-card-style="rose"] .flip-card-container {
+  --card-top-from: #5a2040;
+  --card-top-to: #7a3058;
+  --card-bottom-from: #7a3058;
+  --card-bottom-to: #9a4070;
+  --card-text: #ffb0d0;
+}

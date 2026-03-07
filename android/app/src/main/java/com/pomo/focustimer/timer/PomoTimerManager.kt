@@ -12,8 +12,6 @@ import com.pomo.focustimer.R
 import com.pomo.focustimer.data.PomoPreferences
 import com.pomo.focustimer.model.PomoLogic
 import com.pomo.focustimer.model.PomoState
-import com.pomo.focustimer.widget.PomoWidgetProvider
-import com.pomo.focustimer.widget.PomoWidgetReceiver
 
 object PomoTimerManager {
 
@@ -36,7 +34,6 @@ object PomoTimerManager {
         PomoPreferences.save(context, newState)
         scheduleAlarm(context, endTime)
         showNotification(context, newState)
-        PomoWidgetProvider.updateAllWidgets(context)
     }
 
     fun pauseTimer(context: Context) {
@@ -55,7 +52,6 @@ object PomoTimerManager {
         PomoPreferences.save(context, newState)
         cancelAlarm(context)
         showNotification(context, newState)
-        PomoWidgetProvider.updateAllWidgets(context)
     }
 
     fun toggleTimer(context: Context) {
@@ -69,7 +65,6 @@ object PomoTimerManager {
         PomoPreferences.save(context, newState)
         cancelAlarm(context)
         showNotification(context, newState)
-        PomoWidgetProvider.updateAllWidgets(context)
     }
 
     fun resetPhase(context: Context) {
@@ -78,7 +73,6 @@ object PomoTimerManager {
         PomoPreferences.save(context, newState)
         cancelAlarm(context)
         showNotification(context, newState)
-        PomoWidgetProvider.updateAllWidgets(context)
     }
 
     fun stopTimer(context: Context) {
@@ -101,13 +95,11 @@ object PomoTimerManager {
 
         sendPhaseCompleteNotification(context, completedPhase, newState)
         showNotification(context, newState)
-        PomoWidgetProvider.updateAllWidgets(context)
     }
 
     fun onBootCompleted(context: Context) {
         val state = PomoPreferences.load(context)
         if (!state.running || state.endTimeMillis <= 0) {
-            PomoWidgetProvider.updateAllWidgets(context)
             return
         }
 
@@ -117,7 +109,6 @@ object PomoTimerManager {
             scheduleAlarm(context, state.endTimeMillis)
             showNotification(context, state)
         }
-        PomoWidgetProvider.updateAllWidgets(context)
     }
 
     /**
@@ -139,7 +130,6 @@ object PomoTimerManager {
             cancelAlarm(context)
             showNotification(context, newState)
         }
-        PomoWidgetProvider.updateAllWidgets(context)
     }
 
     // --- Private helpers ---
@@ -190,8 +180,9 @@ object PomoTimerManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val toggleIntent = Intent(context, PomoWidgetReceiver::class.java).apply {
-            action = PomoWidgetReceiver.ACTION_TOGGLE
+        val toggleAction = if (state.running) "com.pomo.focustimer.NOTIF_PAUSE" else "com.pomo.focustimer.NOTIF_PLAY"
+        val toggleIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = toggleAction
         }
         val togglePending = PendingIntent.getBroadcast(
             context, 1, toggleIntent,

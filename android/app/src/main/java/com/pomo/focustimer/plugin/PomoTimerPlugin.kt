@@ -9,7 +9,6 @@ import com.pomo.focustimer.data.PomoPreferences
 import com.pomo.focustimer.model.PomoState
 import com.pomo.focustimer.service.AmbientAudioService
 import com.pomo.focustimer.timer.PomoTimerManager
-import com.pomo.focustimer.widget.PomoWidgetProvider
 
 @CapacitorPlugin(name = "PomoTimer")
 class PomoTimerPlugin : Plugin() {
