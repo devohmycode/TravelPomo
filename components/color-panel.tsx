@@ -756,9 +756,7 @@ export function ColorPanel({
             isPro={isPro}
           />
         ))}
-      </div>
-      {/* Custom theme — centered */}
-      <div className="flex justify-center mb-5">
+        {/* Custom theme — inline in grid */}
         <button
           onClick={() => {
             if (!isPro) {
@@ -772,7 +770,7 @@ export function ColorPanel({
             }
           }}
           className={`
-            relative rounded-xl overflow-hidden h-20 w-1/3 transition-all duration-200
+            relative rounded-xl overflow-hidden h-20 transition-all duration-200
             ${isCustom ? "ring-2 ring-white/60 scale-105" : "ring-1 ring-white/10 hover:ring-white/30"}
           `}
         >
