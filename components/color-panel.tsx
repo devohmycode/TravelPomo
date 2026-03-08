@@ -165,8 +165,8 @@ function ColorPickerView({
 }
 
 type BackgroundType = "solid" | "linear" | "radial" | "mesh" | "waves" | "noise" | "plasma" | "parallax"
-type OverlayEffect = "none" | "frost" | "rain" | "snow" | "flutes" | "fireflies" | "sakura" | "stars" | "bokeh" | "aurora" | "bubbles" | "dust" | "matrix"
-type GlowMode = "rotate" | "pulse" | "breathe" | "colorShift" | "flowHorizontal" | "static" | "rainbow" | "neon" | "fire" | "glitch" | "heartbeat"
+type OverlayEffect = "none" | "frost" | "rain" | "snow" | "flutes" | "fireflies" | "sakura" | "stars" | "bokeh" | "aurora" | "bubbles" | "dust" | "matrix" | "confetti" | "lightning" | "waterWaves"
+type GlowMode = "rotate" | "pulse" | "breathe" | "colorShift" | "flowHorizontal" | "static" | "rainbow" | "neon" | "fire" | "glitch" | "heartbeat" | "auroraGlow" | "cyber"
 type ClockFont = "default" | "lcd" | "handwritten" | "pixel" | "thin"
 type CardStyle = "classic" | "midnight" | "ocean" | "ruby" | "emerald" | "amethyst" | "slate" | "gold" | "rose" | "custom"
 
@@ -192,6 +192,12 @@ const THEMES: ThemeOption[] = [
   { a: "#2D1B69", b: "#E8B4F8", label: "Lavender", premium: true },
   { a: "#1a0000", b: "#FF4500", label: "Ember", premium: true },
   { a: "#0a0a1a", b: "#D4AF37", label: "Midnight", premium: true },
+  { a: "#2d1b3d", b: "#ff8fa3", label: "Cherry Blossom", premium: true },
+  { a: "#0a1628", b: "#00e5ff", label: "Deep Ocean", premium: true },
+  { a: "#1a1210", b: "#e87e04", label: "Copper", premium: true },
+  { a: "#e8edf2", b: "#4a90d9", label: "Frost", premium: true },
+  { a: "#0d1117", b: "#58a6ff", label: "Cobalt", premium: true },
+  { a: "#1a0a2e", b: "#f72585", label: "Neon Rose", premium: true },
 ]
 
 const FREE_BG_TYPES: BackgroundType[] = ["solid", "linear", "radial"]
@@ -199,7 +205,7 @@ const PREMIUM_BG_TYPES: BackgroundType[] = ["mesh", "waves", "noise", "plasma", 
 const ALL_BG_TYPES: BackgroundType[] = [...FREE_BG_TYPES, ...PREMIUM_BG_TYPES]
 
 const FREE_OVERLAYS: OverlayEffect[] = ["none", "frost", "rain", "snow", "flutes"]
-const PREMIUM_OVERLAYS: OverlayEffect[] = ["fireflies", "sakura", "stars", "bokeh", "aurora", "bubbles", "dust", "matrix"]
+const PREMIUM_OVERLAYS: OverlayEffect[] = ["fireflies", "sakura", "stars", "bokeh", "aurora", "bubbles", "dust", "matrix", "confetti", "lightning", "waterWaves"]
 const ALL_OVERLAYS: OverlayEffect[] = [...FREE_OVERLAYS, ...PREMIUM_OVERLAYS]
 
 const FREE_GLOW_MODES: { value: GlowMode; label: string }[] = [
@@ -217,6 +223,8 @@ const PREMIUM_GLOW_MODES: { value: GlowMode; label: string }[] = [
   { value: "fire", label: "Fire" },
   { value: "glitch", label: "Glitch" },
   { value: "heartbeat", label: "Heartbeat" },
+  { value: "auroraGlow", label: "Aurora" },
+  { value: "cyber", label: "Cyber" },
 ]
 
 const CLOCK_FONTS: { value: ClockFont; label: string; premium: boolean }[] = [
@@ -804,7 +812,7 @@ export function ColorPanel({
         {ALL_OVERLAYS.map((effect) => (
           <PillButton
             key={effect}
-            label={effect.charAt(0).toUpperCase() + effect.slice(1)}
+            label={effect === "waterWaves" ? "Waves" : effect.charAt(0).toUpperCase() + effect.slice(1)}
             active={overlayEffect === effect}
             onClick={() => handleOverlayClick(effect)}
             premium={PREMIUM_OVERLAYS.includes(effect)}

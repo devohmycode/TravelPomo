@@ -17,7 +17,9 @@ export type GlowEffectProps = {
     | 'neon'
     | 'fire'
     | 'glitch'
-    | 'heartbeat';
+    | 'heartbeat'
+    | 'auroraGlow'
+    | 'cyber';
   blur?:
     | number
     | 'softest'
@@ -179,6 +181,39 @@ export function GlowEffect({
           ...BASE_TRANSITION,
           duration: 1.2,
           times: [0, 0.15, 0.4, 0.55, 1],
+        }),
+      },
+    },
+    auroraGlow: {
+      background: [
+        `linear-gradient(135deg, #1b4332 0%, #6a0dad 50%, #1b4332 100%)`,
+        `linear-gradient(135deg, #6a0dad 0%, #1b4332 50%, #00b4d8 100%)`,
+        `linear-gradient(135deg, #00b4d8 0%, #6a0dad 50%, #1b4332 100%)`,
+      ],
+      scale: [1 * scale, 1.04 * scale, 1 * scale],
+      opacity: [0.5, 0.8, 0.5],
+      transition: {
+        ...(transition ?? {
+          ...BASE_TRANSITION,
+          duration: 6,
+          repeatType: 'mirror',
+        }),
+      },
+    },
+    cyber: {
+      boxShadow: [
+        `0 0 3px ${colors[0]}, 0 0 6px ${colors[0]}`,
+        `0 0 6px ${colors[1] || colors[0]}, 0 0 12px ${colors[1] || colors[0]}`,
+        `0 0 1px ${colors[0]}, 0 0 3px ${colors[0]}`,
+        `0 0 8px ${colors[1] || colors[0]}, 0 0 16px ${colors[1] || colors[0]}`,
+        `0 0 3px ${colors[0]}, 0 0 6px ${colors[0]}`,
+      ],
+      opacity: [1, 0.6, 1, 0.4, 1],
+      transition: {
+        ...(transition ?? {
+          ...BASE_TRANSITION,
+          duration: 0.8,
+          ease: 'linear',
         }),
       },
     },

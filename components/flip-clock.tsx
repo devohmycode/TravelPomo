@@ -27,6 +27,9 @@ import { NorthernLightsCanvas } from "./northern-lights-canvas"
 import { BubblesCanvas } from "./bubbles-canvas"
 import { DustMotesCanvas } from "./dust-motes-canvas"
 import { MatrixCanvas } from "./matrix-canvas"
+import { ConfettiCanvas } from "./confetti-canvas"
+import { LightningCanvas } from "./lightning-canvas"
+import { WaterWavesCanvas } from "./water-waves-canvas"
 import { MeshBackground } from "./mesh-background"
 import { WavesBackground } from "./waves-background"
 import { NoiseBackground } from "./noise-background"
@@ -540,6 +543,9 @@ export function FlipClock() {
       {overlay === "bubbles" && <BubblesCanvas fpsMode={fpsMode} />}
       {overlay === "dust" && <DustMotesCanvas fpsMode={fpsMode} />}
       {overlay === "matrix" && <MatrixCanvas fpsMode={fpsMode} />}
+      {overlay === "confetti" && <ConfettiCanvas fpsMode={fpsMode} />}
+      {overlay === "lightning" && <LightningCanvas fpsMode={fpsMode} />}
+      {overlay === "waterWaves" && <WaterWavesCanvas fpsMode={fpsMode} />}
 
       {/* Clock display */}
       <div
