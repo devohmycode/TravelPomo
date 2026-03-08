@@ -35,13 +35,15 @@
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
 
-        <!-- Notification Action Receiver (play/pause from notification) -->
+        <!-- Notification Action Receiver (play/pause/skip/reset from notification) -->
         <receiver
             android:name=".timer.NotificationActionReceiver"
             android:exported="false">
             <intent-filter>
                 <action android:name="com.pomo.focustimer.NOTIF_PAUSE" />
                 <action android:name="com.pomo.focustimer.NOTIF_PLAY" />
+                <action android:name="com.pomo.focustimer.NOTIF_SKIP" />
+                <action android:name="com.pomo.focustimer.NOTIF_RESET" />
             </intent-filter>
         </receiver>
 

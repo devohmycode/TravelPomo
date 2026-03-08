@@ -5,7 +5,12 @@ import android.app.NotificationManager
 import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.os.Build
+import android.os.VibrationEffect
+import android.os.Vibrator
+import android.os.VibratorManager
 import androidx.core.app.NotificationCompat
+import androidx.media.app.NotificationCompat as MediaNotificationCompat
 import com.pomo.focustimer.MainActivity
 import com.pomo.focustimer.PomoApplication
 import com.pomo.focustimer.R
@@ -93,6 +98,7 @@ object PomoTimerManager {
         val newState = PomoLogic.advancePhase(stateWithPending).copy(endTimeMillis = 0L)
         PomoPreferences.save(context, newState)
 
+        vibrateForPhase(context, completedPhase)
         sendPhaseCompleteNotification(context, completedPhase, newState)
         showNotification(context, newState)
     }
@@ -156,6 +162,24 @@ object PomoTimerManager {
         alarmManager.cancel(pendingIntent)
     }
 
+    private fun vibrateForPhase(context: Context, completedPhase: String) {
+        val pattern = when (completedPhase) {
+            "work" -> longArrayOf(0, 200, 100, 200, 100, 400)
+            "longBreak" -> longArrayOf(0, 100, 80, 100, 80, 100, 80, 600)
+            else -> longArrayOf(0, 150, 100, 150)
+        }
+
+        val vibrator = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val manager = context.getSystemService(Context.VIBRATOR_MANAGER_SERVICE) as VibratorManager
+            manager.defaultVibrator
+        } else {
+            @Suppress("DEPRECATION")
+            context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+        }
+
+        vibrator.vibrate(VibrationEffect.createWaveform(pattern, -1))
+    }
+
     private fun showNotification(context: Context, state: PomoState, force: Boolean = false) {
         // Skip rebuild if nothing visible changed (chronometer handles countdown)
         if (!force &&
@@ -180,7 +204,20 @@ object PomoTimerManager {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
 
-        val toggleAction = if (state.running) "com.pomo.focustimer.NOTIF_PAUSE" else "com.pomo.focustimer.NOTIF_PLAY"
+        // Action 0: Reset
+        val resetIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = NotificationActionReceiver.ACTION_RESET
+        }
+        val resetPending = PendingIntent.getBroadcast(
+            context, 2, resetIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Action 1: Play/Pause
+        val toggleAction = if (state.running)
+            NotificationActionReceiver.ACTION_PAUSE
+        else
+            NotificationActionReceiver.ACTION_PLAY
         val toggleIntent = Intent(context, NotificationActionReceiver::class.java).apply {
             action = toggleAction
         }
@@ -188,26 +225,48 @@ object PomoTimerManager {
             context, 1, toggleIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+        val toggleIcon = if (state.running)
+            android.R.drawable.ic_media_pause
+        else
+            android.R.drawable.ic_media_play
         val toggleLabel = if (state.running) "Pause" else "Play"
+
+        // Action 2: Skip
+        val skipIntent = Intent(context, NotificationActionReceiver::class.java).apply {
+            action = NotificationActionReceiver.ACTION_SKIP
+        }
+        val skipPending = PendingIntent.getBroadcast(
+            context, 3, skipIntent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
 
         val builder = NotificationCompat.Builder(context, PomoApplication.CHANNEL_TIMER)
             .setSmallIcon(R.mipmap.ic_launcher)
-            .setContentText(state.task.ifEmpty { "Pomo Timer" })
+            .setContentTitle(state.task.ifEmpty { phaseLabel })
             .setOngoing(state.running)
             .setContentIntent(openPending)
-            .addAction(0, toggleLabel, togglePending)
+            .addAction(android.R.drawable.ic_menu_revert, "Reset", resetPending)
+            .addAction(toggleIcon, toggleLabel, togglePending)
+            .addAction(android.R.drawable.ic_media_next, "Skip", skipPending)
+            .setStyle(MediaNotificationCompat.MediaStyle()
+                .setShowActionsInCompactView(0, 1, 2))
             .setSilent(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
 
         if (state.running && state.endTimeMillis > 0) {
             builder.setUsesChronometer(true)
                 .setChronometerCountDown(true)
                 .setWhen(state.endTimeMillis)
-                .setContentTitle(phaseLabel)
+                .setContentText(phaseLabel)
         } else {
             val minutes = state.remaining / 60
             val seconds = state.remaining % 60
             val timeText = String.format("%02d:%02d", minutes, seconds)
-            builder.setContentTitle("$phaseLabel - $timeText")
+            builder.setContentText("$phaseLabel \u2014 $timeText")
+        }
+
+        if (state.task.isNotEmpty()) {
+            builder.setSubText(state.task)
         }
 
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager

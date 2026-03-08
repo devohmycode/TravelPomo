@@ -175,6 +175,7 @@ interface ThemeOption {
   b: string
   label: string
   premium?: boolean
+  system?: boolean
 }
 
 const THEMES: ThemeOption[] = [
@@ -267,6 +268,7 @@ interface ColorPanelProps {
   isPro: boolean
   onProNeeded: () => void
   onPreviewStart?: () => void
+  systemColors?: { colorA: string; colorB: string; available: boolean } | null
 }
 
 function PillButton({
@@ -322,7 +324,9 @@ function ThemePreview({
       <div
         className="absolute inset-0"
         style={{
-          background: `linear-gradient(135deg, ${theme.a} 0%, ${theme.b} 100%)`,
+          background: theme.system
+            ? `conic-gradient(from 0deg, ${theme.a}, ${theme.b}, ${theme.a})`
+            : `linear-gradient(135deg, ${theme.a} 0%, ${theme.b} 100%)`,
         }}
       />
       <span className="relative text-white text-xs font-semibold drop-shadow-md flex items-end justify-center pb-2 h-full">
@@ -447,11 +451,20 @@ export function ColorPanel({
   isPro,
   onProNeeded,
   onPreviewStart,
+  systemColors,
 }: ColorPanelProps) {
+  const showSystemTheme = systemColors?.available === true
+  const systemTheme: ThemeOption | null = showSystemTheme
+    ? { a: systemColors!.colorA, b: systemColors!.colorB, label: "System", system: true }
+    : null
+
   const isCustom = activeThemeIndex === -1
+  const isSystem = activeThemeIndex === -2
   const currentTheme = isCustom
     ? { a: customColorA, b: customColorB, label: "Custom" }
-    : THEMES[activeThemeIndex] || THEMES[0]
+    : isSystem && systemTheme
+      ? systemTheme
+      : THEMES[activeThemeIndex] || THEMES[0]
 
   // Custom sub-views for theme and card style
   const [customView, setCustomView] = useState<null | "select" | "editA" | "editB" | "cardSelect" | "cardEditColor" | "cardEditText">(null)
@@ -717,6 +730,15 @@ export function ColorPanel({
       {/* Themes section */}
       <p className="text-white/80 text-sm font-semibold mb-2">Themes</p>
       <div className="grid grid-cols-3 gap-2 mb-5">
+        {systemTheme && (
+          <ThemePreview
+            key="System"
+            theme={systemTheme}
+            active={activeThemeIndex === -2}
+            onClick={() => { setCustomView(null); onThemeChange(-2); onClose() }}
+            isPro={isPro}
+          />
+        )}
         {THEMES.map((theme, i) => (
           <ThemePreview
             key={theme.label}

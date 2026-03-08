@@ -85,9 +85,10 @@ export function sendNotification(title: string, body: string) {
 // ---- Alarm sound (shared across platforms) ----
 
 const TIMER_SOUND_URLS: Record<string, string> = {
-  gong: 'https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/gong-timer_placeholder.mp3',
-  chime: 'https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/chime-timer_placeholder.mp3',
-  bell: 'https://res.cloudinary.com/dptrimoqv/video/upload/v1772294643/bell-timer_placeholder.mp3',
+  default: 'https://res.cloudinary.com/dptrimoqv/video/upload/v1772972788/new-notification_nzuvaj.mp3',
+  gong: 'https://res.cloudinary.com/dptrimoqv/video/upload/v1772972788/gong_m6ehtj.mp3',
+  chime: 'https://res.cloudinary.com/dptrimoqv/video/upload/v1772972788/chime_ifmdgg.mp3',
+  bell: 'https://res.cloudinary.com/dptrimoqv/video/upload/v1772972788/bell_zjuw9c.mp3',
 }
 
 let alarmAudio: HTMLAudioElement | null = null
@@ -96,30 +97,12 @@ let currentSoundType = 'default'
 export function playAlarmSound(soundType: string = 'default') {
   if (typeof window === 'undefined') return
 
-  const url = soundType !== 'default' && TIMER_SOUND_URLS[soundType]
-    ? TIMER_SOUND_URLS[soundType]
-    : null
+  const url = TIMER_SOUND_URLS[soundType] || TIMER_SOUND_URLS['default']
 
-  if (url) {
-    // Premium sound from URL
-    if (!alarmAudio || currentSoundType !== soundType) {
-      if (alarmAudio) { alarmAudio.pause(); alarmAudio.src = '' }
-      alarmAudio = new Audio(url)
-      currentSoundType = soundType
-    }
-    alarmAudio.currentTime = 0
-    alarmAudio.volume = 0.6
-    alarmAudio.play().catch(() => {})
-    return
-  }
-
-  // Default embedded sound
-  currentSoundType = 'default'
-  if (!alarmAudio || alarmAudio.src.startsWith('http')) {
+  if (!alarmAudio || currentSoundType !== soundType) {
     if (alarmAudio) { alarmAudio.pause(); alarmAudio.src = '' }
-    alarmAudio = new Audio(
-      'data:audio/wav;base64,UklGRnoGAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQoGAACBhYqFbF1fdH2JkZuTi39ydnmBipOcnZiQg3ZtcXqEl52hlYuAdXR8hpKeoJaKfXV1fYiSnp6Ui3x0dX6JlJ+dlIt8c3V+ipaenJOKe3N1f4qXnpySiXpydn+LmJ6ckoh5cnZ/i5ienJKIeXJ2f4uYnpySiHlydX+LmJ6ckoh5cnZ/jJmenpKIeXJ1f4yZn56TiXpydX+MmZ+ek4l6cnV/jJmfnpOJenJ1f4yZn56TiXpydX+MmZ+ek4l6cnV/jJqfnpOJenJ1f4yZn56TiXpydX+MmZ+ek4l6cnV/jJmfnpOJenJ1f4yZn56TiXpydX+MmZ+ek4l6cnV/jJmfnpOJenJ1f4yZn56TiXpydX+MmZ+ek4l6cnV/jJmfnpOJenJ1gI2aoJ+Uintzdn+MmZ+ek4l6cnWAjZqgn5SKe3N2f4yZn56UiXpydYCNmqCflIp7c3Z/jJmfnpSJenJ1gI2aoJ+Uintzdn+MmZ+elIl6cnWAjZqgn5SKe3N2f4yZn56UiXpydYCNmqCflIp7c3aAjZqgn5SKe3N2gI2aoJ+Uintzdn+MmZ+elIl6c3aAjZqgn5SKe3N2gI2aoJ+Uintzdn+NmqCflIp7c3aAjZqgn5SKe3N2gI2aoJ+Uintzdn+NmqCflIp7c3aAjZqgn5SKe3R3gI6boaCVi3x0d4COm6Gglot8dHeAjpuhoJaLfHR3gI6boaCWi3x0d4COm6Gglot8dHeAjpuhoJaLfHR3gI6boaCWi3x0d4CPnKKhlox9dXiAj5yioZaMfXV4gI+coqGWjH11eICPnKKhlox9dXiBkJ2jopaOffV4gZCdo6KWjn31eIGQnaOilo599XiBkJ2jopaOffV4gZCdo6KWjn31eIGRnqSjl459dnmBkZ6ko5eOfXZ5gZGepKOXjn12eYGRnqSjl459dnmBkZ6ko5eOfXZ5gZGepKOXjn12eYKSn6WkmJB+d3qCkp+lpJiQfnd6gpKfpaSYkH53eoKSn6WkmJB+d3qCkp+lpJiQfnd6gpKfpaSYkH53eoKTn6almZF/eHuDk5+mpZmRf3h7g5OfpqWZkX94e4OTn6almZF/eHuDk5+mpZmRf3h7g5SgpqaakYB5e4OUoKammpGAeXuDlKCmppqRgHl7g5SgpqaakYB5e4OUoKammpGAeXuElaCnp5uSgXp8hJWgp6ebkoF6fISVoKenm5KBenyElaCnp5uSgXp8hJWgp6ebkoF6fISVoKenm5KBenyFlqGop5yTgnx9hZahqKeckIJ8fYaXoqmnnJOCfH2Fl6KpqJ2Tg318hpejqqienYOCfH2GmKOqqZ6dgIJ8fYaYo6qpnp2Agn19hpiiq6qfnoGDfX6HmaOsq6CfgoR+f4iao62soaCChH5/iZqkrq2hoYOFf4CJm6WurqKig4Z/gIqcpq+vo6ODhoCAipymr6+jpIOGf4CLnaexsKSlhIeAf4ucp7CypaWFh4F/i5ynsbKlpYaIgoCMnaeys6amhoiBgIyep7O0pqeHioKBjZ+otLWnqIeKgoKOoKm1tqipiIuCg46gqra3qaqJjIODj6GrtreppomMg4OPoau3uKqrioyDhJCirLi5q6yLjYSEkaOturmtroqOhISRo627u62ui4+FhZKkrry8rq+Lj4WFkqWvvb2vsIyQhoaTpa+9vq+xjJGGh5Smr76/sLKNkoiHlaeywMCxs46TiIiWqLPBwbO0j5SIiZepssPCtLWPlYmJl6mzw8O1to+WioqYqrTExba2kJeKipmrs8XFtriRmIuLmqu0xcW3uJGYi4ubq7XGxrm6kpmMjJyrtsbHurqSmoyMnKy2x8i7u5ObjI2drLfIyLy8lJyNjp6tuMjJvb2UnY6On664ycq+vpWejpCfr7nKy7/AlZ+PkKCwusvMwMGWoJCRobG7y8zBwpehkZKisbzMzcPDl6KRkqKyvM3Ow8OXo5KTo7O9zs/ExJikk5OktL7P0MXGmaSUlKW1v9DRxseapdSUprW/0NHHx5ql'
-    )
+    alarmAudio = new Audio(url)
+    currentSoundType = soundType
   }
   alarmAudio.currentTime = 0
   alarmAudio.volume = 0.6

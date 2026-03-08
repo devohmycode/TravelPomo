@@ -52,6 +52,7 @@ import {
 } from "./color-panel"
 import { usePersistedState } from "@/hooks/use-persisted-state"
 import { usePro } from "@/hooks/use-pro"
+import { useDynamicColors } from "@/hooks/use-dynamic-colors"
 import { useTimer } from "@/hooks/use-timer"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { getPhaseLabel } from "@/lib/pomodoro"
@@ -92,6 +93,7 @@ function lerpColor(
 export function FlipClock() {
   // Pro state
   const { isPro, purchasePro, restorePurchase } = usePro()
+  const dynamicColors = useDynamicColors()
   const [showProPopup, setShowProPopup] = useState(false)
   const [proPreview, setProPreview] = useState(false)
 
@@ -290,7 +292,9 @@ export function FlipClock() {
   const fpsModeRef = useRef(fpsMode)
   const theme = themeIndex === -1
     ? { a: customColorA, b: customColorB, label: "Custom" }
-    : THEMES[themeIndex] || THEMES[0]
+    : themeIndex === -2 && dynamicColors?.available
+      ? { a: dynamicColors.colorA, b: dynamicColors.colorB, label: "System" }
+      : THEMES[themeIndex] || THEMES[0]
   const themeRef = useRef(theme)
   const bgTypeRef = useRef(bgType)
   themeRef.current = theme
@@ -752,6 +756,7 @@ export function FlipClock() {
             isPro={isPro}
             onProNeeded={() => { setProPreview(false); setShowProPopup(true) }}
             onPreviewStart={() => { setShowColorPanel(false); setProPreview(true) }}
+            systemColors={dynamicColors}
           />
         </div>
       )}
