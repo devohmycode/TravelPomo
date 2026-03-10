@@ -43,6 +43,8 @@ interface SettingsPanelProps {
   isPro: boolean
   onProNeeded: () => void
   onReplayTutorial: () => void
+  zenMode: boolean
+  onToggleZenMode: () => void
 }
 
 function TogglePill({
@@ -140,6 +142,8 @@ export function SettingsPanel({
   isPro,
   onProNeeded,
   onReplayTutorial,
+  zenMode,
+  onToggleZenMode,
 }: SettingsPanelProps) {
   return (
     <div
@@ -245,7 +249,7 @@ export function SettingsPanel({
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2 mb-3">
+      <div className="grid grid-cols-3 gap-2 mb-3">
         <TogglePill
           label="30 FPS"
           active={fpsMode === "30"}
@@ -255,6 +259,11 @@ export function SettingsPanel({
           label="60 FPS"
           active={fpsMode === "60"}
           onClick={() => onFpsModeChange("60")}
+        />
+        <TogglePill
+          label="Zen"
+          active={zenMode}
+          onClick={onToggleZenMode}
         />
       </div>
 

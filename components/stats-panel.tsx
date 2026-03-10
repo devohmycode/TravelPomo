@@ -25,6 +25,7 @@ import {
   type Session,
 } from "@/lib/session-store"
 import { ProBadge } from "./pro-badge"
+import { BadgesPanel } from "./badges-panel"
 
 // ---- Utilities ----
 
@@ -460,6 +461,11 @@ export function StatsPanel({ onClose, themeA, themeB, isPro, onProNeeded, refres
         ) : (
           <p className="text-white/30 text-sm text-center py-2">No data yet</p>
         )}
+      </div>
+
+      {/* Badges */}
+      <div className="mb-5">
+        <BadgesPanel refreshKey={refreshKey} />
       </div>
 
       {/* Export */}

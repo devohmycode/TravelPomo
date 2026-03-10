@@ -58,13 +58,15 @@ import { usePro } from "@/hooks/use-pro"
 import { useDynamicColors } from "@/hooks/use-dynamic-colors"
 import { useTimer } from "@/hooks/use-timer"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
+import { useSwipeNavigation } from "@/hooks/use-swipe-navigation"
 import { getPhaseLabel } from "@/lib/pomodoro"
 import {
   sendNotification,
   playAlarmSound,
   requestNotificationPermission,
 } from "@/lib/notifications"
-import { addSession } from "@/lib/session-store"
+import { addSession, loadSessions, getStreak, getTodayStats, getAllTimeStats } from "@/lib/session-store"
+import { checkAndUnlockBadges } from "@/lib/badges"
 import { isNative, toggleBrowserFullscreen, toggleTauriFullscreen } from "@/lib/fullscreen"
 import { isTauriPlatform } from "@/lib/platform"
 import { keepAwake, allowSleep } from "@/lib/keep-awake"
@@ -124,6 +126,7 @@ export function FlipClock() {
   const [ambientVolume, setAmbientVolume] = usePersistedState("pomo-ambient-vol", 50)
   const [fpsMode, setFpsMode] = usePersistedState<FpsMode>("pomo-fps", "30")
   const [onboardingDone, setOnboardingDone] = usePersistedState("pomo-onboarding-done", false)
+  const [zenMode, setZenMode] = usePersistedState("pomo-zen", false)
 
   // Switch to pomo mode for onboarding so all buttons are visible
   useEffect(() => {
@@ -151,6 +154,27 @@ export function FlipClock() {
   const [showStatsPanel, setShowStatsPanel] = usePersistedState("pomo-showstats", false)
   const [showAmbientPanel, setShowAmbientPanel] = usePersistedState("pomo-showambient", false)
 
+  // Zen mode: tap to reveal controls temporarily
+  const [zenVisible, setZenVisible] = useState(false)
+  const zenTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+  const anyPanelOpen = showSettings || showColorPanel || showStatsPanel || showAmbientPanel
+  const zenHidden = zenMode && !zenVisible && !anyPanelOpen
+
+  const revealZenControls = useCallback(() => {
+    if (!zenMode || anyPanelOpen) return
+    setZenVisible(true)
+    if (zenTimerRef.current) clearTimeout(zenTimerRef.current)
+    zenTimerRef.current = setTimeout(() => setZenVisible(false), 3500)
+  }, [zenMode, anyPanelOpen])
+
+  // Keep controls visible while a panel is open
+  useEffect(() => {
+    if (anyPanelOpen) {
+      setZenVisible(true)
+      if (zenTimerRef.current) clearTimeout(zenTimerRef.current)
+    }
+  }, [anyPanelOpen])
+
   // Ambient sound playback
   useAmbientSound(ambientSound, ambientVolume)
 
@@ -170,6 +194,24 @@ export function FlipClock() {
     (data: Parameters<typeof addSession>[0]) => {
       addSession(data)
       setStatsKey((k) => k + 1)
+
+      // Check for newly unlocked badges
+      const sessions = loadSessions()
+      const today = getTodayStats()
+      const allTime = getAllTimeStats()
+      const streak = getStreak()
+      const newBadges = checkAndUnlockBadges({
+        sessions,
+        streak,
+        todayMinutes: today.totalMinutes,
+        allTimeMinutes: allTime.totalMinutes,
+        allTimeSessions: allTime.sessionCount,
+      })
+      for (const badge of newBadges) {
+        toast.success(`${badge.emoji} ${badge.name}`, {
+          description: badge.description,
+        })
+      }
     },
     []
   )
@@ -455,6 +497,29 @@ export function FlipClock() {
     mode: timer.mode,
   })
 
+  // Swipe navigation between modes
+  const MODES = ["clock", "pomo", "stopwatch"] as const
+  const [swipeAnim, setSwipeAnim] = useState<"left" | "right" | null>(null)
+
+  const swipeToMode = useCallback(
+    (direction: "left" | "right") => {
+      const idx = MODES.indexOf(timer.mode)
+      const next = direction === "left" ? idx + 1 : idx - 1
+      if (next < 0 || next >= MODES.length) return
+      setSwipeAnim(direction)
+      setTimeout(() => {
+        handleModeChange(MODES[next])
+        setSwipeAnim(null)
+      }, 150)
+    },
+    [timer.mode, handleModeChange]
+  )
+
+  const swipeHandlers = useSwipeNavigation({
+    onSwipeLeft: () => swipeToMode("left"),
+    onSwipeRight: () => swipeToMode("right"),
+  })
+
   // Tauri tray events
   useEffect(() => {
     if (!isTauriPlatform()) return
@@ -549,12 +614,38 @@ export function FlipClock() {
 
       {/* Clock display */}
       <div
-        className="relative flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8"
+        className={`relative flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8 transition-all duration-150 ${
+          swipeAnim === "left"
+            ? "-translate-x-12 opacity-0"
+            : swipeAnim === "right"
+              ? "translate-x-12 opacity-0"
+              : "translate-x-0 opacity-100"
+        }`}
         style={{ zIndex: 1 }}
+        onClick={zenMode ? revealZenControls : undefined}
+        {...swipeHandlers}
       >
+        {/* Mode indicator dots */}
+        {!zoomed && (
+          <div className={`flex items-center gap-2 transition-opacity duration-500 ${zenHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
+            {MODES.map((m) => (
+              <button
+                key={m}
+                onClick={() => handleModeChange(m)}
+                className={`transition-all duration-300 rounded-full ${
+                  timer.mode === m
+                    ? "w-6 h-2 bg-white/60"
+                    : "size-2 bg-white/20 hover:bg-white/35"
+                }`}
+                aria-label={`Switch to ${m} mode`}
+              />
+            ))}
+          </div>
+        )}
+
         {/* Phase indicator for Pomo mode */}
         {timer.mode === "pomo" && !zoomed && (
-          <div className="flex flex-col items-center gap-2">
+          <div className={`flex flex-col items-center gap-2 transition-opacity duration-500 ${zenHidden ? "opacity-0" : "opacity-100"}`}>
             <span
               className="text-white/70 text-xs sm:text-sm font-semibold uppercase tracking-[0.2em] px-4 py-1.5 rounded-full"
               style={{
@@ -584,7 +675,7 @@ export function FlipClock() {
 
         {/* Task list for Pomo mode */}
         {timer.mode === "pomo" && !zoomed && (
-          <div data-tour="task" className="w-full flex flex-col items-center gap-1.5">
+          <div data-tour="task" className={`w-full flex flex-col items-center gap-1.5 transition-opacity duration-500 ${zenHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
             {tasks.map((task, i) => (
               <div key={i} className="flex items-center gap-1.5" style={{ width: "clamp(172px, 30vw + 12px, 292px)" }}>
                 <input
@@ -676,7 +767,9 @@ export function FlipClock() {
 
         {/* Lap list for Stopwatch mode */}
         {timer.mode === "stopwatch" && timer.laps.length > 0 && !zoomed && (
-          <LapList laps={timer.laps} />
+          <div className={`transition-opacity duration-500 ${zenHidden ? "opacity-0" : "opacity-100"}`}>
+            <LapList laps={timer.laps} />
+          </div>
         )}
       </div>
 
@@ -724,6 +817,15 @@ export function FlipClock() {
             onReplayTutorial={() => {
               setOnboardingDone(false)
               setShowSettings(false)
+            }}
+            zenMode={zenMode}
+            onToggleZenMode={() => {
+              const next = !zenMode
+              setZenMode(next)
+              if (next) {
+                closeAllPanels()
+                setZenVisible(false)
+              }
             }}
           />
         </div>
@@ -810,7 +912,11 @@ export function FlipClock() {
 
       {/* Buttons */}
       <div
-        className={`absolute bottom-[8%] sm:bottom-[6%] inset-x-0 flex flex-wrap justify-center gap-3 px-4 transition-opacity duration-300 ${proPreview ? "opacity-0 pointer-events-none" : ""}`}
+        className={`absolute bottom-[8%] sm:bottom-[6%] inset-x-0 flex flex-wrap justify-center gap-3 px-4 transition-all duration-500 ${
+          proPreview || zenHidden
+            ? "opacity-0 pointer-events-none translate-y-4"
+            : "opacity-100 translate-y-0"
+        }`}
         style={{ zIndex: 11 }}
       >
         {/* Reset (pomo & stopwatch) */}
