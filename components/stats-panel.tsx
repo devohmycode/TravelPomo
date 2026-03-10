@@ -297,26 +297,16 @@ export function StatsPanel({ onClose, themeA, themeB, isPro, onProNeeded, refres
       <div className="mb-5">
         <div className="flex items-center justify-between mb-1.5">
           <p className="text-white/80 text-sm font-semibold">Daily Goal</p>
-          {isPro ? (
-            <button
-              onClick={() => setEditingGoal(!editingGoal)}
-              className="text-white/40 text-xs hover:text-white/60 transition-colors"
-            >
-              {editingGoal ? "Done" : `${dailyGoal}m`}
-            </button>
-          ) : (
-            <button
-              onClick={onProNeeded}
-              className="relative text-white/40 text-xs hover:text-white/60 transition-colors"
-            >
-              {dailyGoal}m
-              <ProBadge show />
-            </button>
-          )}
+          <button
+            onClick={() => setEditingGoal(!editingGoal)}
+            className="text-white/40 text-xs hover:text-white/60 transition-colors"
+          >
+            {editingGoal ? "Done" : `${dailyGoal}m`}
+          </button>
         </div>
 
-        {/* Goal edit controls (Pro only) */}
-        {editingGoal && isPro && (
+        {/* Goal edit controls */}
+        {editingGoal && (
           <div className="flex items-center justify-center gap-3 mb-2">
             <button
               onClick={() => updateGoal(dailyGoal - 15)}
@@ -355,15 +345,10 @@ export function StatsPanel({ onClose, themeA, themeB, isPro, onProNeeded, refres
       <div className="flex items-center justify-between mb-2">
         <p className="text-white/80 text-sm font-semibold">Activity</p>
         <div className="flex gap-1">
-          {(["week", "month", "all"] as const).map((view) => {
-            const locked = view !== "week" && !isPro
-            return (
+          {(["week", "month", "all"] as const).map((view) => (
               <button
                 key={view}
-                onClick={() => {
-                  if (locked) { onProNeeded(); return }
-                  setChartView(view)
-                }}
+                onClick={() => setChartView(view)}
                 className={`relative text-xs px-2.5 py-1 rounded-lg transition-all ${
                   chartView === view
                     ? "bg-white/15 text-white"
@@ -371,10 +356,8 @@ export function StatsPanel({ onClose, themeA, themeB, isPro, onProNeeded, refres
                 }`}
               >
                 {view === "week" ? "7d" : view === "month" ? "30d" : "12w"}
-                <ProBadge show={locked} />
               </button>
-            )
-          })}
+          ))}
         </div>
       </div>
 
@@ -408,24 +391,14 @@ export function StatsPanel({ onClose, themeA, themeB, isPro, onProNeeded, refres
         </ResponsiveContainer>
       </div>
 
-      {/* Heatmap calendar (Pro) */}
+      {/* Heatmap calendar */}
       <div className="mb-5">
         <div className="flex items-center justify-between mb-2">
           <p className="text-white/80 text-sm font-semibold relative">
             Contributions
-            <ProBadge show={!isPro} />
           </p>
         </div>
-        {isPro ? (
-          <HeatmapCalendar themeColor={themeB} />
-        ) : (
-          <button
-            onClick={onProNeeded}
-            className="w-full py-4 rounded-xl bg-white/5 border border-white/10 text-white/30 text-xs hover:bg-white/8 transition-all"
-          >
-            Unlock heatmap with Pro
-          </button>
-        )}
+        <HeatmapCalendar themeColor={themeB} />
       </div>
 
       {/* Today's sessions */}
@@ -464,70 +437,50 @@ export function StatsPanel({ onClose, themeA, themeB, isPro, onProNeeded, refres
         </p>
       )}
 
-      {/* By Task (Pro) */}
+      {/* By Task */}
       <div className="mb-5">
         <p className="text-white/80 text-sm font-semibold mb-2 relative">
           By Task
-          <ProBadge show={!isPro} />
         </p>
-        {isPro ? (
-          taskStats.length > 0 ? (
-            <div className="space-y-1.5">
-              {taskStats.slice(0, 8).map((t) => (
-                <div
-                  key={t.task}
-                  className="flex items-center justify-between text-sm bg-white/5 rounded-lg px-3 py-2"
-                >
-                  <span className="text-white/70 truncate max-w-[160px]">{t.task}</span>
-                  <div className="flex items-center gap-2 ml-2 shrink-0">
-                    <span className="text-white/50">{formatMinutesShort(t.totalMinutes)}</span>
-                    <span className="text-white/30 text-xs">({t.sessionCount})</span>
-                  </div>
+        {taskStats.length > 0 ? (
+          <div className="space-y-1.5">
+            {taskStats.slice(0, 8).map((t) => (
+              <div
+                key={t.task}
+                className="flex items-center justify-between text-sm bg-white/5 rounded-lg px-3 py-2"
+              >
+                <span className="text-white/70 truncate max-w-[160px]">{t.task}</span>
+                <div className="flex items-center gap-2 ml-2 shrink-0">
+                  <span className="text-white/50">{formatMinutesShort(t.totalMinutes)}</span>
+                  <span className="text-white/30 text-xs">({t.sessionCount})</span>
                 </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-white/30 text-sm text-center py-2">No data yet</p>
-          )
+              </div>
+            ))}
+          </div>
         ) : (
-          <button
-            onClick={onProNeeded}
-            className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white/30 text-xs hover:bg-white/8 transition-all"
-          >
-            Unlock task breakdown with Pro
-          </button>
+          <p className="text-white/30 text-sm text-center py-2">No data yet</p>
         )}
       </div>
 
-      {/* Export (Pro) */}
+      {/* Export */}
       <div>
         <p className="text-white/80 text-sm font-semibold mb-2 relative">
           Export
-          <ProBadge show={!isPro} />
         </p>
-        {isPro ? (
-          <div className="grid grid-cols-2 gap-2">
-            <button
-              onClick={() => handleExport("csv")}
-              className="py-2.5 rounded-xl bg-white/8 text-white/70 text-sm font-medium hover:bg-white/12 transition-all"
-            >
-              CSV
-            </button>
-            <button
-              onClick={() => handleExport("json")}
-              className="py-2.5 rounded-xl bg-white/8 text-white/70 text-sm font-medium hover:bg-white/12 transition-all"
-            >
-              JSON
-            </button>
-          </div>
-        ) : (
+        <div className="grid grid-cols-2 gap-2">
           <button
-            onClick={onProNeeded}
-            className="w-full py-3 rounded-xl bg-white/5 border border-white/10 text-white/30 text-xs hover:bg-white/8 transition-all"
+            onClick={() => handleExport("csv")}
+            className="py-2.5 rounded-xl bg-white/8 text-white/70 text-sm font-medium hover:bg-white/12 transition-all"
           >
-            Unlock data export with Pro
+            CSV
           </button>
-        )}
+          <button
+            onClick={() => handleExport("json")}
+            className="py-2.5 rounded-xl bg-white/8 text-white/70 text-sm font-medium hover:bg-white/12 transition-all"
+          >
+            JSON
+          </button>
+        </div>
       </div>
     </div>
   )

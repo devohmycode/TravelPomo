@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Caveat:wght@700&family=Press+Start+2P&family=Rajdhani:wght@700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@700;800;900&family=Caveat:wght@700&family=Press+Start+2P&family=Rajdhani:wght@700&family=Space+Mono:wght@700&family=Playfair+Display:wght@700;800;900&family=Black+Ops+One&family=Share+Tech+Mono&display=swap');
 @import 'tailwindcss';
 @import 'tw-animate-css';
 
@@ -319,6 +319,40 @@
   font-family: 'Rajdhani', sans-serif;
   font-weight: 700;
   letter-spacing: 1px;
+}
+
+[data-font="mono"] .flip-card-inner span {
+  font-family: 'Space Mono', monospace;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+[data-font="elegant"] .flip-card-inner span {
+  font-family: 'Playfair Display', serif;
+  font-weight: 800;
+}
+
+[data-font="stencil"] .flip-card-inner span {
+  font-family: 'Black Ops One', system-ui;
+  font-size: clamp(36px, 8vw, 80px);
+}
+
+@media (min-width: 640px) {
+  [data-font="stencil"] .flip-card-inner span {
+    font-size: clamp(44px, 7vw, 80px);
+  }
+}
+
+@media (min-width: 1024px) {
+  [data-font="stencil"] .flip-card-inner span {
+    font-size: clamp(52px, 5.5vw, 90px);
+  }
+}
+
+[data-font="digital"] .flip-card-inner span {
+  font-family: 'Share Tech Mono', monospace;
+  font-weight: 400;
+  letter-spacing: 2px;
 }
 
 /* Card Style overrides (premium) */

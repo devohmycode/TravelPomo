@@ -167,7 +167,7 @@ function ColorPickerView({
 type BackgroundType = "solid" | "linear" | "radial" | "mesh" | "waves" | "noise" | "plasma" | "parallax"
 type OverlayEffect = "none" | "frost" | "rain" | "snow" | "flutes" | "fireflies" | "sakura" | "stars" | "bokeh" | "aurora" | "bubbles" | "dust" | "matrix" | "confetti" | "lightning" | "waterWaves"
 type GlowMode = "rotate" | "pulse" | "breathe" | "colorShift" | "flowHorizontal" | "static" | "rainbow" | "neon" | "fire" | "glitch" | "heartbeat" | "auroraGlow" | "cyber"
-type ClockFont = "default" | "lcd" | "handwritten" | "pixel" | "thin"
+type ClockFont = "default" | "lcd" | "handwritten" | "pixel" | "thin" | "mono" | "elegant" | "stencil" | "digital"
 type CardStyle = "classic" | "midnight" | "ocean" | "ruby" | "emerald" | "amethyst" | "slate" | "gold" | "rose" | "custom"
 
 interface ThemeOption {
@@ -229,15 +229,19 @@ const PREMIUM_GLOW_MODES: { value: GlowMode; label: string }[] = [
 
 const CLOCK_FONTS: { value: ClockFont; label: string; premium: boolean }[] = [
   { value: "default", label: "Default", premium: false },
-  { value: "lcd", label: "Retro LCD", premium: true },
+  { value: "lcd", label: "Retro LCD", premium: false },
   { value: "handwritten", label: "Handwritten", premium: true },
   { value: "pixel", label: "Pixel", premium: true },
   { value: "thin", label: "Thin", premium: true },
+  { value: "mono", label: "Mono", premium: true },
+  { value: "elegant", label: "Elegant", premium: true },
+  { value: "stencil", label: "Stencil", premium: true },
+  { value: "digital", label: "Digital", premium: true },
 ]
 
 const CARD_STYLES: { value: CardStyle; label: string; colors: [string, string, string]; premium: boolean }[] = [
   { value: "classic", label: "Classic", colors: ["#e87850", "#f0a050", "#b83020"], premium: false },
-  { value: "midnight", label: "Midnight", colors: ["#1a1a3e", "#3a3a7e", "#8b8bff"], premium: true },
+  { value: "midnight", label: "Midnight", colors: ["#1a1a3e", "#3a3a7e", "#8b8bff"], premium: false },
   { value: "ocean", label: "Ocean", colors: ["#0a3d5c", "#1276a8", "#4ec8f0"], premium: true },
   { value: "ruby", label: "Ruby", colors: ["#6b1030", "#a82050", "#ff6090"], premium: true },
   { value: "emerald", label: "Emerald", colors: ["#0a3a2a", "#108050", "#40e890"], premium: true },
