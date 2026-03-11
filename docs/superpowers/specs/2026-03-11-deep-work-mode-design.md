@@ -43,10 +43,10 @@ The `Mode` type must be used consistently everywhere it was updated for Breathin
 
 - Animated flame centered in the main content area (replaces the FlipGroup timer and ProgressRing)
 - Stage label above the flame: "Spark" / "Kindling" / "Warming up" / etc. — crossfade between transitions
-- Elapsed time counter + task name — bottom of screen, subtle
+- Elapsed time counter (active time only, excluding pauses) + task name — bottom of screen, subtle
 - Controls: Play/Pause, Reset (same control buttons as other modes). No Skip button.
-- Task input visible (unlike Breathing where it's hidden)
-- Keep-awake active during sessions
+- Task input visible: expand the existing task input conditional in `flip-clock.tsx` (currently `mode === "pomo"`) to also show when `mode === "deepwork"`
+- Keep-awake active during sessions (update `effectiveIsRunning` to include deep work)
 - Zen mode compatible
 
 ## Flame — Canvas Rendering
@@ -101,24 +101,32 @@ In free mode, the flame reaches "Inferno" at 120 min and stays stable thereafter
 
 ## Controls and Behavior
 
+### Timer semantics
+
+- `elapsedTime` tracks **active time only** (excluding pauses). This is the value shown on screen and recorded in stats.
+- In **timed mode**, the countdown is based on active time. A 60-min session with 10 min of pauses completes after 70 min of wall-clock time. The flame progression is based on `elapsedTime / totalDuration`.
+- In **free mode**, there is no countdown. `elapsedTime` counts up (active time only). Flame progression is based on `elapsedTime / FREE_MODE_REFERENCE` where `FREE_MODE_REFERENCE = 7200` (120 min in seconds). Progress is clamped at 1.0 — once the flame reaches Inferno, it stays there.
+
 ### Pause
 
 - Timer stops, flame freezes (no animation but flame remains displayed)
+- `elapsedTime` stops incrementing. The hook stores `pauseStartTime` to track how long the pause lasts.
 - Internal pause counter increments
-- Pause duration tracked separately
+- Pause duration tracked separately (`totalPauseTime`)
 - No friction dialog — just pause/resume transparently
 
 ### End of Session (Timed Mode)
 
-1. Flame does a final burst animation (bright flash, 1.5s)
+1. Flame does a final burst animation: scale up to 1.2x over 0.5s with a white radial flash overlay (opacity 0→0.6→0), then fade-out over 1s (same `fadeRef` pattern as Breathing)
 2. Haptic feedback (3 rapid impulses, same as Breathing)
 3. End sound plays (if sound enabled)
-4. Recap shown inline (replaces the flame area):
-   - Total duration
-   - Number of pauses + total pause duration
-   - Max stage reached
+4. Recap shown inline (replaces the flame area, same `RecapScreen` sub-component pattern as Breathing):
+   - Total active duration (formatted as `mm:ss`)
+   - Number of pauses + total pause duration (e.g., "2 pauses · 3:20")
+   - Max stage reached (e.g., "Peak: Deep focus")
    - Task name
    - "Tap to dismiss" (auto-dismiss after 5s)
+   - Props: `totalDuration`, `pauseCount`, `totalPauseTime`, `maxStageReached`, `taskName`, `onDismiss`
 5. Return to idle: mode stays on "deepwork", flame returns to unlit state
 
 ### End of Session (Free Mode)
@@ -149,9 +157,19 @@ Reuses `@capacitor/haptics` already installed.
 ### Settings
 
 - Toggle haptic on/off in deep work settings
-- Default: on (mobile), off (desktop)
+- Default: `true` (single boolean, same pattern as Breathing's existing `usePersistedState` — no platform detection at default level)
 
 ## Settings Panel
+
+### Header label
+
+Update the ternary chain in `settings-panel.tsx` that displays the mode label to include `"deepwork"`:
+
+```typescript
+mode === "clock" ? "Clock" : mode === "pomo" ? "Pomodoro" : mode === "breathing" ? "Breathing" : mode === "deepwork" ? "Deep Work" : "Stopwatch"
+```
+
+### Deep Work section
 
 New section visible only when mode is `"deepwork"`:
 
@@ -160,6 +178,10 @@ New section visible only when mode is `"deepwork"`:
 - Haptic toggle
 
 No other configuration. Deep Work is deliberately simple.
+
+### Mode selector layout
+
+Switch from `grid-cols-4` to a scrollable horizontal row: `flex overflow-x-auto gap-1.5` with each pill having `min-w-[70px] flex-shrink-0`. This accommodates 5 modes on all screen sizes. The layout change is necessary because 5 pills do not fit in a fixed grid on narrow screens.
 
 ## Stats
 
@@ -171,21 +193,39 @@ Add `"deepwork"` to the phase types in `lib/session-store.ts`:
 phase: "work" | "shortBreak" | "longBreak" | "breathing" | "deepwork"
 ```
 
-Deep work sessions record:
-- Duration (total elapsed, excluding pause time)
-- Task name
-- Pause count
-- Total pause duration
+The `Session` interface is **not extended** with pause-specific fields. Pause count, total pause time, and max stage reached are in-memory values from the hook, displayed in the recap screen at session end, but **not persisted** to storage. Only the standard `durationMinutes` (active time, excluding pauses) and `task` are stored. This keeps the Session interface simple and avoids a migration.
+
+### Daily stats integration
+
+Deep Work is a productivity mode. Update `getDailyMinutesMap()` in `session-store.ts` to include `"deepwork"` sessions alongside `"work"` sessions:
+
+```typescript
+// Before: s.phase === "work"
+// After:  s.phase === "work" || s.phase === "deepwork"
+```
+
+This ensures Deep Work minutes count toward: heatmap, streak, daily goal, weekly average, best day, all-time totals, and by-task stats.
+
+### Deep Work Stats
+
+In addition to appearing in the global stats, Deep Work gets its own dedicated section (same pattern as "Breathing"):
+
+```typescript
+function getDeepWorkStats(sessions: Session[]): {
+  totalMinutes: number
+  sessionCount: number
+  averageMinutes: number  // totalMinutes / sessionCount, or 0
+  longestMinutes: number  // max durationMinutes across deepwork sessions, or 0
+}
+```
 
 ### Stats Panel
 
-Section "Deep Work" (same pattern as "Breathing" section):
+Section "Deep Work" (shown only when deepwork sessions exist):
 - Total time
 - Session count
 - Average session duration
 - Longest session
-
-Deep work stats are separate from Pomo work stats.
 
 ## Pro / Premium Gating
 
@@ -216,9 +256,28 @@ Deep work stats are separate from Pomo work stats.
 ### Integration in `flip-clock.tsx`
 
 - When `mode === "deepwork"`: render `DeepWorkFlame` in place of FlipGroup/ProgressRing
-- Controls (play/pause/reset) mapped to `use-deep-work`
+- **3-way effective controls**: update `effectiveIsRunning`, `effectiveToggle`, `effectiveReset` to handle 3 modes:
+
+```typescript
+const effectiveIsRunning =
+  timer.mode === "breathing" ? breathing.isRunning
+  : timer.mode === "deepwork" ? deepWork.isRunning
+  : timer.isRunning
+
+const effectiveToggle =
+  timer.mode === "breathing" ? breathing.toggle
+  : timer.mode === "deepwork" ? deepWork.toggle
+  : timer.toggle
+
+const effectiveReset =
+  timer.mode === "breathing" ? breathing.reset
+  : timer.mode === "deepwork" ? deepWork.reset
+  : timer.reset
+```
+
+- **handleModeChange**: when switching away from `"deepwork"`, call `deepWork.reset()` (same as existing `breathing.reset()` call when leaving breathing)
 - Settings panel shows deep work configuration section
-- `keepAwake()` called when deep work session is running
+- `keepAwake()` called when `effectiveIsRunning` is true (already the case if effectiveIsRunning is updated)
 - Zoomed state disabled in deep work mode
 - Session recorded on completion via `prevDeepWorkComplete` ref pattern (same as Breathing)
 
@@ -242,7 +301,13 @@ Haptics reuses `@capacitor/haptics`. No other new packages needed.
 
 ### Background behavior
 
-Same as Breathing: purely front-end. When the app is backgrounded, the deep work timer **continues** (unlike Breathing where the user needs to watch the bubble). The elapsed time is drift-corrected on resume via `Date.now()` comparison. This is the key difference from Breathing's pause-on-background behavior.
+Two distinct behaviors:
+
+1. **User-initiated pause** (taps Pause button): timer stops, `elapsedTime` stops incrementing, pause counter increments. Resume continues from where it left off.
+
+2. **App backgrounded** (user switches to another app, screen off): the timer **continues running**. Unlike Breathing (where the user needs to watch the bubble and the timer pauses), Deep Work is about sustained focus — the timer should keep counting even if the phone screen is off. The drift-resistant `Date.now()` mechanism handles this: on app resume, elapsed time is computed as `Date.now() - sessionStartTime - totalPauseTime`, which correctly accounts for time passed while backgrounded. The flame animation snaps to the correct stage on resume.
+
+This matches the existing Pomodoro behavior (timer continues in background) and differs from Breathing (timer pauses in background).
 
 ### Onboarding
 
