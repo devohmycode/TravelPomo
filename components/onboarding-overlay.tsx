@@ -152,8 +152,8 @@ export function OnboardingOverlay({ onComplete }: OnboardingOverlayProps) {
 
   const isLast = step === TOUR_STEPS.length - 1
 
-  // Position tooltip above or below spotlight
-  const tooltipAbove = rect ? rect.top > window.innerHeight / 2 : false
+  // Position tooltip above or below spotlight — check if enough room below (tooltip ~180px)
+  const tooltipAbove = rect ? (rect.top + rect.height + 12 + 180 > window.innerHeight) : false
 
   return (
     <div
