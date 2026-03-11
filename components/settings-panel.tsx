@@ -1,11 +1,10 @@
 "use client"
 
 import type { PomodoroConfig } from "@/lib/pomodoro"
+import type { Mode } from "@/hooks/use-timer"
 import { ProBadge } from "./pro-badge"
 
 export type FpsMode = "30" | "60"
-
-type Mode = "clock" | "pomo" | "stopwatch"
 
 export type TimerSound = "default" | "gong" | "chime" | "bell"
 
@@ -155,7 +154,7 @@ export function SettingsPanel({
       }}
     >
       <p className="text-white/60 text-xs font-medium uppercase tracking-wider mb-4">
-        {mode === "clock" ? "Clock" : mode === "pomo" ? "Pomodoro" : "Stopwatch"}
+        {mode === "clock" ? "Clock" : mode === "pomo" ? "Pomodoro" : mode === "breathing" ? "Breathing" : "Stopwatch"}
       </p>
 
       {/* Mode selector */}

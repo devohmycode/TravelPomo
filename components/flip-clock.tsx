@@ -56,7 +56,7 @@ import {
 import { usePersistedState } from "@/hooks/use-persisted-state"
 import { usePro } from "@/hooks/use-pro"
 import { useDynamicColors } from "@/hooks/use-dynamic-colors"
-import { useTimer } from "@/hooks/use-timer"
+import { useTimer, type Mode } from "@/hooks/use-timer"
 import { useKeyboardShortcuts } from "@/hooks/use-keyboard-shortcuts"
 import { useSwipeNavigation } from "@/hooks/use-swipe-navigation"
 import { getPhaseLabel } from "@/lib/pomodoro"
@@ -242,7 +242,7 @@ export function FlipClock() {
   }, [savePartialSession, timer])
 
   const handleModeChange = useCallback(
-    (mode: "clock" | "pomo" | "stopwatch") => {
+    (mode: Mode) => {
       savePartialSession()
       timer.setMode(mode)
     },
@@ -498,7 +498,7 @@ export function FlipClock() {
   })
 
   // Swipe navigation between modes
-  const MODES = ["clock", "pomo", "stopwatch"] as const
+  const MODES: Mode[] = ["clock", "pomo", "stopwatch", "breathing"]
   const [swipeAnim, setSwipeAnim] = useState<"left" | "right" | null>(null)
 
   const swipeToMode = useCallback(

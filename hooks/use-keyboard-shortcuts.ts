@@ -54,6 +54,9 @@ export function useKeyboardShortcuts(config: KeyboardShortcutsConfig) {
         case "Digit3":
           config.onSetMode("stopwatch")
           break
+        case "Digit4":
+          config.onSetMode("breathing")
+          break
       }
     }
 

@@ -14,7 +14,7 @@ import {
 } from "@/lib/pomodoro"
 import { syncWidgetState, forceSyncWidgetState } from "@/lib/widget-bridge"
 
-export type Mode = "clock" | "pomo" | "stopwatch"
+export type Mode = "clock" | "pomo" | "stopwatch" | "breathing"
 
 interface ClockValues {
   hours: string
