@@ -17,7 +17,7 @@ export const DEFAULT_DEEP_WORK_CONFIG: DeepWorkConfig = {
 
 const FREE_MODE_REFERENCE = 7200 // 120 min in seconds — flame reaches max at this point
 
-const STAGE_LABELS = [
+export const STAGE_LABELS = [
   "Spark",
   "Kindling",
   "Warming up",

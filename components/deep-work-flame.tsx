@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useRef, useCallback } from "react"
-import type { DeepWorkStage } from "@/hooks/use-deep-work"
+import { STAGE_LABELS, type DeepWorkStage } from "@/hooks/use-deep-work"
 
 interface DeepWorkFlameProps {
   stage: DeepWorkStage
@@ -36,10 +36,7 @@ function formatTime(seconds: number): string {
   return `${m}:${String(s).padStart(2, "0")}`
 }
 
-const STAGE_LABELS_MAP: Record<number, string> = {
-  1: "Spark", 2: "Kindling", 3: "Warming up", 4: "Building",
-  5: "Focused", 6: "Deep focus", 7: "Blazing", 8: "Inferno",
-}
+// Use STAGE_LABELS from hook — single source of truth for stage names
 
 const prefersReducedMotion =
   typeof window !== "undefined"
@@ -152,7 +149,7 @@ export function DeepWorkFlame({
       return
     }
     const ctx = canvas.getContext("2d")
-    if (!ctx) return
+    if (!ctx) { rafRef.current = requestAnimationFrame(draw); return }
 
     const { stage: s, progress: prog, isComplete: done, isRunning: running, colorA: cA, colorB: cB } = propsRef.current
 
@@ -406,7 +403,7 @@ export function DeepWorkFlame({
           totalDuration={totalDuration}
           pauseCount={pauseCount}
           totalPauseTime={totalPauseTime}
-          maxStageLabel={STAGE_LABELS_MAP[maxStageReached]}
+          maxStageLabel={STAGE_LABELS[maxStageReached - 1]}
           taskName={taskName}
           onDismiss={onDismissRecap}
         />
