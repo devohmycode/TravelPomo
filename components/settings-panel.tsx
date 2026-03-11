@@ -190,10 +190,10 @@ export function SettingsPanel({
       </p>
 
       {/* Mode selector */}
-      <div className="flex gap-2 mb-3 overflow-x-auto">
+      <div className="grid grid-cols-4 gap-1.5 mb-3">
         <TogglePill label="Clock" active={mode === "clock"} onClick={() => onModeChange("clock")} />
         <TogglePill label="Pomo" active={mode === "pomo"} onClick={() => onModeChange("pomo")} />
-        <TogglePill label="Stopwatch" active={mode === "stopwatch"} onClick={() => onModeChange("stopwatch")} />
+        <TogglePill label="Timer" active={mode === "stopwatch"} onClick={() => onModeChange("stopwatch")} />
         <TogglePill label="Breathe" active={mode === "breathing"} onClick={() => onModeChange("breathing")} />
       </div>
 
@@ -248,8 +248,8 @@ export function SettingsPanel({
           <p className="text-white/80 text-sm font-semibold">Preset</p>
           <div className="grid grid-cols-2 gap-2">
             <TogglePill label="Relaxation" active={breathingPresetIndex === 0} onClick={() => onBreathingPresetChange(0)} />
-            <TogglePill label="Calming" active={breathingPresetIndex === 1} onClick={() => { if (!isPro) { onProNeeded(); return }; onBreathingPresetChange(1) }} premium isPro={isPro} />
-            <TogglePill label="Energize" active={breathingPresetIndex === 2} onClick={() => { if (!isPro) { onProNeeded(); return }; onBreathingPresetChange(2) }} premium isPro={isPro} />
+            <TogglePill label="Calming" active={breathingPresetIndex === 1} onClick={() => onBreathingPresetChange(1)} />
+            <TogglePill label="Energize" active={breathingPresetIndex === 2} onClick={() => onBreathingPresetChange(2)} />
             <TogglePill label="Custom" active={breathingPresetIndex === -1} onClick={() => { if (!isPro) { onProNeeded(); return }; onBreathingPresetChange(-1) }} premium isPro={isPro} />
           </div>
 
@@ -282,7 +282,7 @@ export function SettingsPanel({
 
           <div className="grid grid-cols-2 gap-2">
             <TogglePill label="Timed" active={breathingTimedMode} onClick={onBreathingTimedModeToggle} />
-            <TogglePill label="Free" active={!breathingTimedMode} onClick={() => { if (!isPro) { onProNeeded(); return }; onBreathingTimedModeToggle() }} premium isPro={isPro} />
+            <TogglePill label="Free" active={!breathingTimedMode} onClick={onBreathingTimedModeToggle} />
           </div>
 
           {breathingTimedMode && (
