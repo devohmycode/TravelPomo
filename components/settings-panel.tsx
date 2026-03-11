@@ -44,6 +44,22 @@ interface SettingsPanelProps {
   onReplayTutorial: () => void
   zenMode: boolean
   onToggleZenMode: () => void
+  breathingPresetIndex: number
+  onBreathingPresetChange: (index: number) => void
+  breathingCustomInhale: number
+  breathingCustomExhale: number
+  breathingCustomHold: number
+  onBreathingCustomInhaleChange: (v: number) => void
+  onBreathingCustomExhaleChange: (v: number) => void
+  onBreathingCustomHoldChange: (v: number) => void
+  breathingHoldEnabled: boolean
+  onBreathingHoldToggle: () => void
+  breathingTimedMode: boolean
+  onBreathingTimedModeToggle: () => void
+  breathingDuration: number
+  onBreathingDurationChange: (v: number) => void
+  breathingHaptic: boolean
+  onBreathingHapticToggle: () => void
 }
 
 function TogglePill({
@@ -143,6 +159,22 @@ export function SettingsPanel({
   onReplayTutorial,
   zenMode,
   onToggleZenMode,
+  breathingPresetIndex,
+  onBreathingPresetChange,
+  breathingCustomInhale,
+  breathingCustomExhale,
+  breathingCustomHold,
+  onBreathingCustomInhaleChange,
+  onBreathingCustomExhaleChange,
+  onBreathingCustomHoldChange,
+  breathingHoldEnabled,
+  onBreathingHoldToggle,
+  breathingTimedMode,
+  onBreathingTimedModeToggle,
+  breathingDuration,
+  onBreathingDurationChange,
+  breathingHaptic,
+  onBreathingHapticToggle,
 }: SettingsPanelProps) {
   return (
     <div
@@ -158,22 +190,11 @@ export function SettingsPanel({
       </p>
 
       {/* Mode selector */}
-      <div className="grid grid-cols-3 gap-2 mb-3">
-        <TogglePill
-          label="Clock"
-          active={mode === "clock"}
-          onClick={() => onModeChange("clock")}
-        />
-        <TogglePill
-          label="Pomo"
-          active={mode === "pomo"}
-          onClick={() => onModeChange("pomo")}
-        />
-        <TogglePill
-          label="Stopwatch"
-          active={mode === "stopwatch"}
-          onClick={() => onModeChange("stopwatch")}
-        />
+      <div className="flex gap-2 mb-3 overflow-x-auto">
+        <TogglePill label="Clock" active={mode === "clock"} onClick={() => onModeChange("clock")} />
+        <TogglePill label="Pomo" active={mode === "pomo"} onClick={() => onModeChange("pomo")} />
+        <TogglePill label="Stopwatch" active={mode === "stopwatch"} onClick={() => onModeChange("stopwatch")} />
+        <TogglePill label="Breathe" active={mode === "breathing"} onClick={() => onModeChange("breathing")} />
       </div>
 
       {/* Pomodoro config */}
@@ -218,6 +239,63 @@ export function SettingsPanel({
               })
             }
           />
+        </div>
+      )}
+
+      {/* Breathing config */}
+      {mode === "breathing" && (
+        <div className="space-y-3 mb-4">
+          <p className="text-white/80 text-sm font-semibold">Preset</p>
+          <div className="grid grid-cols-2 gap-2">
+            <TogglePill label="Relaxation" active={breathingPresetIndex === 0} onClick={() => onBreathingPresetChange(0)} />
+            <TogglePill label="Calming" active={breathingPresetIndex === 1} onClick={() => { if (!isPro) { onProNeeded(); return }; onBreathingPresetChange(1) }} premium isPro={isPro} />
+            <TogglePill label="Energize" active={breathingPresetIndex === 2} onClick={() => { if (!isPro) { onProNeeded(); return }; onBreathingPresetChange(2) }} premium isPro={isPro} />
+            <TogglePill label="Custom" active={breathingPresetIndex === -1} onClick={() => { if (!isPro) { onProNeeded(); return }; onBreathingPresetChange(-1) }} premium isPro={isPro} />
+          </div>
+
+          {breathingPresetIndex === -1 && (
+            <div className="space-y-2.5 p-3 rounded-xl bg-white/5">
+              <div className="flex items-center justify-between">
+                <span className="text-white/70 text-sm">Inhale</span>
+                <span className="text-white text-sm font-semibold">{breathingCustomInhale}s</span>
+              </div>
+              <input type="range" min={2} max={10} step={0.5} value={breathingCustomInhale} onChange={(e) => onBreathingCustomInhaleChange(parseFloat(e.target.value))} className="w-full accent-white/60" />
+              <div className="flex items-center justify-between">
+                <span className="text-white/70 text-sm">Exhale</span>
+                <span className="text-white text-sm font-semibold">{breathingCustomExhale}s</span>
+              </div>
+              <input type="range" min={2} max={10} step={0.5} value={breathingCustomExhale} onChange={(e) => onBreathingCustomExhaleChange(parseFloat(e.target.value))} className="w-full accent-white/60" />
+              <div className="flex items-center justify-between">
+                <span className="text-white/70 text-sm">Hold</span>
+                <div className="flex items-center gap-2">
+                  <button onClick={onBreathingHoldToggle} className={`px-2 py-1 rounded-lg text-xs transition-all ${breathingHoldEnabled ? "bg-white/20 text-white" : "bg-black/30 text-white/50"}`}>
+                    {breathingHoldEnabled ? "On" : "Off"}
+                  </button>
+                  {breathingHoldEnabled && <span className="text-white text-sm font-semibold">{breathingCustomHold}s</span>}
+                </div>
+              </div>
+              {breathingHoldEnabled && (
+                <input type="range" min={1} max={5} step={0.5} value={breathingCustomHold} onChange={(e) => onBreathingCustomHoldChange(parseFloat(e.target.value))} className="w-full accent-white/60" />
+              )}
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-2">
+            <TogglePill label="Timed" active={breathingTimedMode} onClick={onBreathingTimedModeToggle} />
+            <TogglePill label="Free" active={!breathingTimedMode} onClick={() => { if (!isPro) { onProNeeded(); return }; onBreathingTimedModeToggle() }} premium isPro={isPro} />
+          </div>
+
+          {breathingTimedMode && (
+            <div className="flex flex-wrap gap-1.5">
+              {[1, 2, 3, 5, 10, 15, 20].map((d) => (
+                <button key={d} onClick={() => onBreathingDurationChange(d)} className={`px-2.5 py-1 rounded-lg text-xs font-medium transition-all ${breathingDuration === d ? "bg-white/20 text-white" : "bg-black/30 text-white/50 hover:bg-black/40"}`}>
+                  {d}m
+                </button>
+              ))}
+            </div>
+          )}
+
+          <TogglePill label="Haptic" active={breathingHaptic} onClick={onBreathingHapticToggle} />
         </div>
       )}
 

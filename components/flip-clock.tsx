@@ -1,6 +1,6 @@
 "use client"
 
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import {
   Maximize,
   Timer,
@@ -13,6 +13,8 @@ import {
   Music,
 } from "lucide-react"
 import { toast } from "sonner"
+import { BreathingBubble } from "./breathing-bubble"
+import { useBreathing, BREATHING_PRESETS, type BreathingConfig } from "@/hooks/use-breathing"
 import { FlipGroup } from "./flip-group"
 import { LiquidButton } from "./ui/liquid-glass-button"
 import { SettingsPanel, type FpsMode, type TimerSound } from "./settings-panel"
@@ -128,6 +130,12 @@ export function FlipClock() {
   const [onboardingDone, setOnboardingDone] = usePersistedState("pomo-onboarding-done", false)
   const [zenMode, setZenMode] = usePersistedState("pomo-zen", false)
 
+  const [breathingPresetIndex, setBreathingPresetIndex] = usePersistedState("pomo-breathing-preset", 0)
+  const [breathingCustomConfig, setBreathingCustomConfig] = usePersistedState("pomo-breathing-custom", { inhale: 5, exhale: 5, hold: 0 })
+  const [breathingTimedMode, setBreathingTimedMode] = usePersistedState("pomo-breathing-timed", true)
+  const [breathingDuration, setBreathingDuration] = usePersistedState("pomo-breathing-duration", 5)
+  const [breathingHaptic, setBreathingHaptic] = usePersistedState("pomo-breathing-haptic", true)
+
   // Switch to pomo mode for onboarding so all buttons are visible
   useEffect(() => {
     if (!onboardingDone && timer.mode !== "pomo") {
@@ -186,6 +194,22 @@ export function FlipClock() {
   // Timer
   const timer = useTimer(use24Hour)
 
+  const breathingConfig: BreathingConfig = useMemo(() => {
+    const preset = breathingPresetIndex >= 0 && breathingPresetIndex < BREATHING_PRESETS.length
+      ? BREATHING_PRESETS[breathingPresetIndex]
+      : null
+    return {
+      inhale: preset ? preset.inhale : breathingCustomConfig.inhale,
+      exhale: preset ? preset.exhale : breathingCustomConfig.exhale,
+      hold: preset ? preset.hold : breathingCustomConfig.hold,
+      timedMode: breathingTimedMode,
+      durationMinutes: breathingDuration,
+      hapticEnabled: breathingHaptic,
+    }
+  }, [breathingPresetIndex, breathingCustomConfig, breathingTimedMode, breathingDuration, breathingHaptic])
+
+  const breathing = useBreathing(breathingConfig)
+
   // Stats refresh key — incremented each time a session is recorded
   const [statsKey, setStatsKey] = useState(0)
 
@@ -241,12 +265,25 @@ export function FlipClock() {
     timer.skipPhase()
   }, [savePartialSession, timer])
 
+  const effectiveIsRunning = timer.mode === "breathing" ? breathing.isRunning : timer.isRunning
+
+  const effectiveToggle = useCallback(() => {
+    if (timer.mode === "breathing") breathing.toggle()
+    else timer.toggleRunning()
+  }, [timer.mode, breathing.toggle, timer.toggleRunning])
+
+  const effectiveReset = useCallback(() => {
+    if (timer.mode === "breathing") breathing.reset()
+    else handleReset()
+  }, [timer.mode, breathing.reset, handleReset])
+
   const handleModeChange = useCallback(
     (mode: Mode) => {
       savePartialSession()
+      if (timer.mode === "breathing") breathing.reset()
       timer.setMode(mode)
     },
-    [savePartialSession, timer]
+    [savePartialSession, timer, breathing.reset]
   )
 
   // Keep widget bridge taskRef in sync
@@ -386,13 +423,13 @@ export function FlipClock() {
 
   // Keep screen awake while timer is running
   useEffect(() => {
-    if (timer.isRunning) {
+    if (effectiveIsRunning) {
       keepAwake()
     } else {
       allowSleep()
     }
     return () => { allowSleep() }
-  }, [timer.isRunning])
+  }, [effectiveIsRunning])
 
   // App lifecycle: background/foreground (Capacitor)
   // Use refs to avoid re-registering the listener on every state change
@@ -486,8 +523,8 @@ export function FlipClock() {
 
   // Keyboard shortcuts
   useKeyboardShortcuts({
-    onToggleRunning: timer.toggleRunning,
-    onReset: handleReset,
+    onToggleRunning: effectiveToggle,
+    onReset: effectiveReset,
     onLap: timer.addLap,
     onFullscreen: handleFullscreen,
     onToggleSettings: () => togglePanel("settings"),
@@ -719,7 +756,7 @@ export function FlipClock() {
           data-card-style={cardStyle}
           className="relative flex flex-col items-center gap-5 sm:gap-8 transition-transform duration-300 origin-center"
           style={{
-            ...(zoomed ? { transform: "scale(1.35)" } : {}),
+            ...(zoomed && timer.mode !== "breathing" ? { transform: "scale(1.35)" } : {}),
             ...(cardStyle === "custom" ? {
               "--custom-card-top-from": customCardColor,
               "--custom-card-top-to": `${customCardColor}dd`,
@@ -729,39 +766,64 @@ export function FlipClock() {
             } as React.CSSProperties : {}),
           }}
         >
-          {timer.mode === "pomo" && !zoomed && (
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ margin: "-20px" }}>
-              <ProgressRing
-                progress={timer.pomoProgress}
-                colorA={theme.a}
-                colorB={theme.b}
-                size={400}
-                className="opacity-40"
-              />
-            </div>
-          )}
+          {timer.mode === "breathing" ? (
+            <BreathingBubble
+              phase={breathing.phase}
+              progress={breathing.progress}
+              isLastCycle={breathing.isLastCycle}
+              isComplete={breathing.isComplete}
+              isRunning={breathing.isRunning}
+              cycleCount={breathing.cycleCount}
+              elapsedTime={breathing.elapsedTime}
+              totalDuration={breathing.totalDuration}
+              totalCycles={breathing.totalCycles}
+              presetName={
+                breathingPresetIndex >= 0 && breathingPresetIndex < BREATHING_PRESETS.length
+                  ? `${BREATHING_PRESETS[breathingPresetIndex].name} ${BREATHING_PRESETS[breathingPresetIndex].inhale}/${BREATHING_PRESETS[breathingPresetIndex].exhale}`
+                  : "Custom"
+              }
+              colorA={theme.a}
+              colorB={theme.b}
+              fpsMode={fpsMode}
+              onDismissRecap={() => breathing.reset()}
+            />
+          ) : (
+            <>
+              {timer.mode === "pomo" && !zoomed && (
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none" style={{ margin: "-20px" }}>
+                  <ProgressRing
+                    progress={timer.pomoProgress}
+                    colorA={theme.a}
+                    colorB={theme.b}
+                    size={400}
+                    className="opacity-40"
+                  />
+                </div>
+              )}
 
-          {timer.mode === "clock" && timer.displayHours !== null && (
-            <FlipGroup
-              value={timer.displayHours}
-              glowEnabled={glowEnabled}
-              glowMode={glowMode}
-              glowColors={glowColors}
-            />
-          )}
-          <FlipGroup
-            value={timer.displayMinutes}
-            glowEnabled={glowEnabled}
-            glowMode={glowMode}
-            glowColors={glowColors}
-          />
-          {showSeconds && (
-            <FlipGroup
-              value={timer.displaySeconds}
-              glowEnabled={glowEnabled}
-              glowMode={glowMode}
-              glowColors={glowColors}
-            />
+              {timer.mode === "clock" && timer.displayHours !== null && (
+                <FlipGroup
+                  value={timer.displayHours}
+                  glowEnabled={glowEnabled}
+                  glowMode={glowMode}
+                  glowColors={glowColors}
+                />
+              )}
+              <FlipGroup
+                value={timer.displayMinutes}
+                glowEnabled={glowEnabled}
+                glowMode={glowMode}
+                glowColors={glowColors}
+              />
+              {showSeconds && (
+                <FlipGroup
+                  value={timer.displaySeconds}
+                  glowEnabled={glowEnabled}
+                  glowMode={glowMode}
+                  glowColors={glowColors}
+                />
+              )}
+            </>
           )}
         </div>
 
@@ -827,6 +889,22 @@ export function FlipClock() {
                 setZenVisible(false)
               }
             }}
+            breathingPresetIndex={breathingPresetIndex}
+            onBreathingPresetChange={setBreathingPresetIndex}
+            breathingCustomInhale={breathingCustomConfig.inhale}
+            breathingCustomExhale={breathingCustomConfig.exhale}
+            breathingCustomHold={breathingCustomConfig.hold}
+            onBreathingCustomInhaleChange={(v: number) => setBreathingCustomConfig({ ...breathingCustomConfig, inhale: v })}
+            onBreathingCustomExhaleChange={(v: number) => setBreathingCustomConfig({ ...breathingCustomConfig, exhale: v })}
+            onBreathingCustomHoldChange={(v: number) => setBreathingCustomConfig({ ...breathingCustomConfig, hold: v })}
+            breathingHoldEnabled={breathingCustomConfig.hold > 0}
+            onBreathingHoldToggle={() => setBreathingCustomConfig({ ...breathingCustomConfig, hold: breathingCustomConfig.hold > 0 ? 0 : 1 })}
+            breathingTimedMode={breathingTimedMode}
+            onBreathingTimedModeToggle={() => setBreathingTimedMode((v) => !v)}
+            breathingDuration={breathingDuration}
+            onBreathingDurationChange={setBreathingDuration}
+            breathingHaptic={breathingHaptic}
+            onBreathingHapticToggle={() => setBreathingHaptic((v) => !v)}
           />
         </div>
       )}
@@ -924,7 +1002,7 @@ export function FlipClock() {
           <LiquidButton
             data-tour="reset"
             size="icon"
-            onClick={handleReset}
+            onClick={effectiveReset}
             aria-label="Reset"
             className="rounded-full size-12 sm:size-14"
           >
@@ -937,17 +1015,17 @@ export function FlipClock() {
           <LiquidButton
             data-tour="play"
             size="icon"
-            onClick={timer.toggleRunning}
-            aria-label={timer.isRunning ? "Pause" : "Start"}
+            onClick={effectiveToggle}
+            aria-label={effectiveIsRunning ? "Pause" : "Start"}
             className={`rounded-full size-12 sm:size-14 transition-all duration-200 ${
-              timer.isRunning
+              effectiveIsRunning
                 ? "ring-2 ring-white/40 ring-offset-1 ring-offset-transparent"
                 : ""
             }`}
           >
             <Timer
               className={`size-4 sm:size-5 ${
-                timer.isRunning ? "text-white" : "text-white/80"
+                effectiveIsRunning ? "text-white" : "text-white/80"
               }`}
             />
           </LiquidButton>
