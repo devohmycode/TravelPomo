@@ -294,23 +294,25 @@ export function BreathingBubble({
         </span>
       )}
 
-      {/* Canvas or Recap */}
-      {!isComplete ? (
-        <div
-          ref={containerRef}
-          className="relative"
-          style={{
-            width: "min(80vw, 400px)",
-            height: "min(80vw, 400px)",
-          }}
-        >
-          <canvas
-            ref={canvasRef}
-            className="block"
-            aria-hidden="true"
-          />
-        </div>
-      ) : (
+      {/* Canvas (always mounted to preserve sizing/refs) */}
+      <div
+        ref={containerRef}
+        className="relative"
+        style={{
+          width: "min(80vw, 400px)",
+          height: "min(80vw, 400px)",
+          display: isComplete ? "none" : undefined,
+        }}
+      >
+        <canvas
+          ref={canvasRef}
+          className="block"
+          aria-hidden="true"
+        />
+      </div>
+
+      {/* Recap overlay */}
+      {isComplete && (
         <RecapScreen
           totalDuration={totalDuration}
           totalCycles={totalCycles}
