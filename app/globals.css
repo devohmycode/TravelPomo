@@ -134,8 +134,8 @@
   --card-text: var(--custom-card-text, #b83020);
 
   position: relative;
-  width: clamp(80px, 15vw, 140px);
-  height: clamp(140px, 25vw, 230px);
+  width: clamp(60px, min(15vw, 12vh), 140px);
+  height: clamp(90px, min(25vw, 20vh), 230px);
   perspective: 800px;
   filter:
     drop-shadow(0 2px 4px rgba(0, 0, 0, 0.12))
@@ -207,7 +207,7 @@
 }
 
 .flip-card-inner span {
-  font-size: clamp(52px, 12vw, 120px);
+  font-size: clamp(36px, min(12vw, 10vh), 120px);
   font-weight: 800;
   color: var(--card-text);
   line-height: 1;

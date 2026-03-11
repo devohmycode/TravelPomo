@@ -696,7 +696,7 @@ export function FlipClock() {
 
       {/* Clock display */}
       <div
-        className={`relative flex flex-col items-center justify-center min-h-svh gap-5 sm:gap-8 py-8 transition-all duration-150 ${
+        className={`relative flex flex-col items-center justify-center min-h-svh gap-[min(1.25rem,2vh)] sm:gap-[min(2rem,2vh)] py-[min(2rem,2vh)] transition-all duration-150 ${
           swipeAnim === "left"
             ? "-translate-x-12 opacity-0"
             : swipeAnim === "right"
