@@ -167,7 +167,7 @@ export function DeepWorkFlame({
 
     // Burst animation at session end
     if (done && burstRef.current < 1) {
-      burstRef.current = Math.min(1, burstRef.current + 0.02)
+      burstRef.current = Math.min(1, burstRef.current + 0.035)
     }
 
     // Fade-out after burst completes
@@ -193,7 +193,9 @@ export function DeepWorkFlame({
     const baseY = h * 0.7 // flame base position
     const waveSpeed = 1.5 + stageNorm * 3 // oscillation speed
     const waveAmp = flameWidth * (0.15 + stageNorm * 0.2) // wave amplitude
-    const glowAlpha = 0.05 + stageNorm * 0.35
+    const glowBase = 0.05 + stageNorm * 0.35
+    const glowPulse = Math.sin(now / 1000 * Math.PI) * 0.05 * (stageNorm + 0.3)
+    const glowAlpha = glowBase + glowPulse
 
     // Burst scale
     const burstScale = done ? 1 + burstRef.current * 0.2 : 1
@@ -246,13 +248,14 @@ export function DeepWorkFlame({
 
       // Gradient fill
       const flameGrad = ctx.createLinearGradient(0, 0, 0, -flameHeight)
+      const vividness = 0.6 + stageNorm * 0.4 // 0.6 at stage 1, 1.0 at stage 8
       if (layer === 0) {
         flameGrad.addColorStop(0, cB)
         flameGrad.addColorStop(0.5, cA)
-        flameGrad.addColorStop(1, hexToRgba(cA, 0.6))
+        flameGrad.addColorStop(1, hexToRgba(cA, 0.4 + stageNorm * 0.4))
       } else {
-        flameGrad.addColorStop(0, hexToRgba(cA, 0.4 * layerAlpha))
-        flameGrad.addColorStop(1, hexToRgba(cB, 0.1 * layerAlpha))
+        flameGrad.addColorStop(0, hexToRgba(cA, 0.4 * layerAlpha * vividness))
+        flameGrad.addColorStop(1, hexToRgba(cB, 0.1 * layerAlpha * vividness))
       }
       ctx.fillStyle = flameGrad
       ctx.fill()
@@ -275,7 +278,7 @@ export function DeepWorkFlame({
     // Particles
     if (!done || burstRef.current < 1) {
       const targetFps = fpsMode === "30" ? 30 : 60
-      const particleRate = prefersReducedMotion ? Math.max(1, Math.floor(s / 2)) : 2 + s * 2.5
+      const particleRate = prefersReducedMotion ? Math.max(1, Math.floor(s / 2)) : s * 2.5
       const particles = particlesRef.current
 
       // Emit new particles
@@ -411,7 +414,7 @@ export function DeepWorkFlame({
 
       {/* Elapsed time + task name */}
       {(isRunning || (elapsedTime > 0 && !isComplete)) && (
-        <div className="flex flex-col items-center gap-1" aria-live="polite">
+        <div className="flex flex-col items-center gap-1">
           <div className="flex items-center gap-3 text-white/40 text-xs">
             <span>{formatTime(elapsedTime)}</span>
             {pauseCount > 0 && (
