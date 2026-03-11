@@ -146,15 +146,15 @@
 
 @media (min-width: 640px) {
   .flip-card-container {
-    width: clamp(100px, 12vw, 150px);
-    height: clamp(160px, 20vw, 250px);
+    width: clamp(70px, min(12vw, 13vh), 140px);
+    height: clamp(110px, min(20vw, 22vh), 230px);
   }
 }
 
 @media (min-width: 1024px) {
   .flip-card-container {
-    width: clamp(120px, 10vw, 160px);
-    height: clamp(190px, 16vw, 270px);
+    width: clamp(70px, min(10vw, 13vh), 150px);
+    height: clamp(110px, min(16vw, 22vh), 250px);
   }
 }
 
@@ -217,13 +217,13 @@
 
 @media (min-width: 640px) {
   .flip-card-inner span {
-    font-size: clamp(64px, 10vw, 120px);
+    font-size: clamp(40px, min(10vw, 11vh), 110px);
   }
 }
 
 @media (min-width: 1024px) {
   .flip-card-inner span {
-    font-size: clamp(80px, 8vw, 140px);
+    font-size: clamp(40px, min(8vw, 11vh), 130px);
   }
 }
 

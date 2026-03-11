@@ -799,7 +799,7 @@ export function FlipClock() {
           data-tour="timer"
           data-font={clockFont}
           data-card-style={cardStyle}
-          className="relative flex flex-col items-center gap-5 sm:gap-8 transition-transform duration-300 origin-center"
+          className="relative flex flex-col items-center gap-5 sm:gap-[min(2rem,2vh)] transition-transform duration-300 origin-center"
           style={{
             ...(zoomed && timer.mode !== "breathing" && timer.mode !== "deepwork" ? { transform: "scale(1.35)" } : {}),
             ...(cardStyle === "custom" ? {
