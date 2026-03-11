@@ -240,6 +240,20 @@ export function FlipClock() {
     []
   )
 
+  // Record breathing session on completion
+  const prevBreathingComplete = useRef(false)
+  useEffect(() => {
+    if (breathing.isComplete && !prevBreathingComplete.current) {
+      recordAndRefresh({
+        task: "Breathing",
+        phase: "breathing",
+        durationMinutes: Math.max(1, Math.round(breathing.totalDuration / 60)),
+        completedAt: new Date().toISOString(),
+      })
+    }
+    prevBreathingComplete.current = breathing.isComplete
+  }, [breathing.isComplete, breathing.totalDuration, recordAndRefresh])
+
   // Save partial work session (reset/skip/mode-change while working)
   const savePartialSession = useCallback(() => {
     if (timer.mode !== "pomo" || timer.pomo.phase !== "work") return

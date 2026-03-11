@@ -1,7 +1,7 @@
 export interface Session {
   id: string
   task: string
-  phase: "work" | "shortBreak" | "longBreak"
+  phase: "work" | "shortBreak" | "longBreak" | "breathing"
   durationMinutes: number
   completedAt: string // ISO date
 }
@@ -235,4 +235,14 @@ export function exportSessionsCSV(): string {
 
 export function exportSessionsJSON(): string {
   return JSON.stringify(loadSessions(), null, 2)
+}
+
+// ---- Breathing stats ----
+
+export function getBreathingStats(): { totalMinutes: number; sessionCount: number } {
+  const sessions = loadSessions().filter((s) => s.phase === "breathing")
+  return {
+    totalMinutes: sessions.reduce((sum, s) => sum + s.durationMinutes, 0),
+    sessionCount: sessions.length,
+  }
 }
