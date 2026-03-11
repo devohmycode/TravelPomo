@@ -60,6 +60,12 @@ interface SettingsPanelProps {
   onBreathingDurationChange: (v: number) => void
   breathingHaptic: boolean
   onBreathingHapticToggle: () => void
+  deepWorkTimedMode: boolean
+  onDeepWorkTimedModeToggle: () => void
+  deepWorkDuration: number
+  onDeepWorkDurationChange: (v: number) => void
+  deepWorkHaptic: boolean
+  onDeepWorkHapticToggle: () => void
 }
 
 function TogglePill({
@@ -79,7 +85,7 @@ function TogglePill({
     <button
       onClick={onClick}
       className={`
-        relative rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200
+        relative rounded-xl px-4 py-2.5 text-sm font-medium transition-all duration-200 flex-shrink-0
         ${
           active
             ? "bg-white/20 text-white shadow-inner shadow-white/10"
@@ -175,6 +181,12 @@ export function SettingsPanel({
   onBreathingDurationChange,
   breathingHaptic,
   onBreathingHapticToggle,
+  deepWorkTimedMode,
+  onDeepWorkTimedModeToggle,
+  deepWorkDuration,
+  onDeepWorkDurationChange,
+  deepWorkHaptic,
+  onDeepWorkHapticToggle,
 }: SettingsPanelProps) {
   return (
     <div
@@ -186,15 +198,16 @@ export function SettingsPanel({
       }}
     >
       <p className="text-white/60 text-xs font-medium uppercase tracking-wider mb-4">
-        {mode === "clock" ? "Clock" : mode === "pomo" ? "Pomodoro" : mode === "breathing" ? "Breathing" : "Stopwatch"}
+        {mode === "clock" ? "Clock" : mode === "pomo" ? "Pomodoro" : mode === "breathing" ? "Breathing" : mode === "deepwork" ? "Deep Work" : "Stopwatch"}
       </p>
 
       {/* Mode selector */}
-      <div className="grid grid-cols-4 gap-1.5 mb-3">
+      <div className="flex overflow-x-auto gap-1.5 mb-3">
         <TogglePill label="Clock" active={mode === "clock"} onClick={() => onModeChange("clock")} />
         <TogglePill label="Pomo" active={mode === "pomo"} onClick={() => onModeChange("pomo")} />
         <TogglePill label="Timer" active={mode === "stopwatch"} onClick={() => onModeChange("stopwatch")} />
         <TogglePill label="Breathe" active={mode === "breathing"} onClick={() => onModeChange("breathing")} />
+        <TogglePill label="Deep" active={mode === "deepwork"} onClick={() => onModeChange("deepwork")} />
       </div>
 
       {/* Pomodoro config */}
@@ -296,6 +309,28 @@ export function SettingsPanel({
           )}
 
           <TogglePill label="Haptic" active={breathingHaptic} onClick={onBreathingHapticToggle} />
+        </div>
+      )}
+
+      {/* Deep Work config */}
+      {mode === "deepwork" && (
+        <div className="space-y-3 mb-4">
+          <div className="grid grid-cols-2 gap-2">
+            <TogglePill label="Timed" active={deepWorkTimedMode} onClick={onDeepWorkTimedModeToggle} />
+            <TogglePill label="Free" active={!deepWorkTimedMode} onClick={onDeepWorkTimedModeToggle} />
+          </div>
+
+          {deepWorkTimedMode && (
+            <div className="grid grid-cols-2 gap-2">
+              {[45, 60, 90, 120].map((d) => (
+                <button key={d} onClick={() => onDeepWorkDurationChange(d)} className={`px-2.5 py-2 rounded-xl text-sm font-medium transition-all ${deepWorkDuration === d ? "bg-white/20 text-white shadow-inner shadow-white/10" : "bg-black/30 text-white/70 hover:bg-black/40"}`}>
+                  {d} min
+                </button>
+              ))}
+            </div>
+          )}
+
+          <TogglePill label="Haptic" active={deepWorkHaptic} onClick={onDeepWorkHapticToggle} />
         </div>
       )}
 
