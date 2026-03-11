@@ -1,7 +1,7 @@
 export interface Session {
   id: string
   task: string
-  phase: "work" | "shortBreak" | "longBreak" | "breathing"
+  phase: "work" | "shortBreak" | "longBreak" | "breathing" | "deepwork"
   durationMinutes: number
   completedAt: string // ISO date
 }
@@ -59,7 +59,7 @@ export function getSessionsForDate(dateStr: string): Session[] {
 // ---- Daily minutes map (efficient single-pass) ----
 
 export function getDailyMinutesMap(): Record<string, number> {
-  const sessions = loadSessions().filter((s) => s.phase === "work")
+  const sessions = loadSessions().filter((s) => s.phase === "work" || s.phase === "deepwork")
   const map: Record<string, number> = {}
   for (const s of sessions) {
     const day = s.completedAt.slice(0, 10)
@@ -77,7 +77,7 @@ export function getTodayStats(): {
 } {
   const today = new Date().toISOString().slice(0, 10)
   const sessions = getSessionsForDate(today).filter(
-    (s) => s.phase === "work"
+    (s) => s.phase === "work" || s.phase === "deepwork"
   )
   const totalMinutes = sessions.reduce((sum, s) => sum + s.durationMinutes, 0)
   return { totalMinutes, sessionCount: sessions.length, sessions }
@@ -169,7 +169,7 @@ export function getStreak(): number {
 // ---- All-time totals ----
 
 export function getAllTimeStats(): { totalMinutes: number; sessionCount: number } {
-  const sessions = loadSessions().filter((s) => s.phase === "work")
+  const sessions = loadSessions().filter((s) => s.phase === "work" || s.phase === "deepwork")
   return {
     totalMinutes: sessions.reduce((sum, s) => sum + s.durationMinutes, 0),
     sessionCount: sessions.length,
@@ -208,7 +208,7 @@ export function getWeeklyAverage(): number {
 // ---- Stats by task ----
 
 export function getTaskStats(): { task: string; totalMinutes: number; sessionCount: number }[] {
-  const sessions = loadSessions().filter((s) => s.phase === "work")
+  const sessions = loadSessions().filter((s) => s.phase === "work" || s.phase === "deepwork")
   const byTask: Record<string, { totalMinutes: number; sessionCount: number }> = {}
   for (const s of sessions) {
     const task = s.task || "Unnamed"
@@ -244,5 +244,24 @@ export function getBreathingStats(): { totalMinutes: number; sessionCount: numbe
   return {
     totalMinutes: sessions.reduce((sum, s) => sum + s.durationMinutes, 0),
     sessionCount: sessions.length,
+  }
+}
+
+// ---- Deep Work stats ----
+
+export function getDeepWorkStats(): {
+  totalMinutes: number
+  sessionCount: number
+  averageMinutes: number
+  longestMinutes: number
+} {
+  const sessions = loadSessions().filter((s) => s.phase === "deepwork")
+  const totalMinutes = sessions.reduce((sum, s) => sum + s.durationMinutes, 0)
+  const sessionCount = sessions.length
+  return {
+    totalMinutes,
+    sessionCount,
+    averageMinutes: sessionCount > 0 ? Math.round(totalMinutes / sessionCount) : 0,
+    longestMinutes: sessionCount > 0 ? Math.max(...sessions.map((s) => s.durationMinutes)) : 0,
   }
 }
