@@ -12,7 +12,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: "timer",
     title: "Your Focus Timer",
-    description: "This is your Pomodoro timer. Work for 25 minutes, then take a break.",
+    description: "This is your Pomodoro timer. Work for 25 minutes, then take a break. Swipe left or right to switch between modes.",
   },
   {
     target: "task",
@@ -37,7 +37,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: "settings",
     title: "Settings",
-    description: "Configure durations, modes (Clock, Pomo, Stopwatch), and preferences.",
+    description: "Configure durations, modes (Clock, Pomo, Stopwatch, Breathe), and preferences.",
   },
   {
     target: "colors",
@@ -52,7 +52,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: "stats",
     title: "Statistics",
-    description: "Track your completed focus sessions over time.",
+    description: "Track your focus sessions and breathing exercises over time.",
   },
   {
     target: "fullscreen",
