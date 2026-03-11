@@ -15,6 +15,8 @@ import {
 import { toast } from "sonner"
 import { BreathingBubble } from "./breathing-bubble"
 import { useBreathing, BREATHING_PRESETS, type BreathingConfig } from "@/hooks/use-breathing"
+import { DeepWorkFlame } from "./deep-work-flame"
+import { useDeepWork, type DeepWorkConfig } from "@/hooks/use-deep-work"
 import { FlipGroup } from "./flip-group"
 import { LiquidButton } from "./ui/liquid-glass-button"
 import { SettingsPanel, type FpsMode, type TimerSound } from "./settings-panel"
@@ -136,6 +138,10 @@ export function FlipClock() {
   const [breathingDuration, setBreathingDuration] = usePersistedState("pomo-breathing-duration", 5)
   const [breathingHaptic, setBreathingHaptic] = usePersistedState("pomo-breathing-haptic", true)
 
+  const [deepWorkTimedMode, setDeepWorkTimedMode] = usePersistedState("pomo-deepwork-timed", true)
+  const [deepWorkDuration, setDeepWorkDuration] = usePersistedState("pomo-deepwork-duration", 60)
+  const [deepWorkHaptic, setDeepWorkHaptic] = usePersistedState("pomo-deepwork-haptic", true)
+
   // Switch to pomo mode for onboarding so all buttons are visible
   useEffect(() => {
     if (!onboardingDone && timer.mode !== "pomo") {
@@ -210,6 +216,14 @@ export function FlipClock() {
 
   const breathing = useBreathing(breathingConfig)
 
+  const deepWorkConfig: DeepWorkConfig = useMemo(() => ({
+    timedMode: deepWorkTimedMode,
+    durationMinutes: deepWorkDuration,
+    hapticEnabled: deepWorkHaptic,
+  }), [deepWorkTimedMode, deepWorkDuration, deepWorkHaptic])
+
+  const deepWork = useDeepWork(deepWorkConfig)
+
   // Stats refresh key — incremented each time a session is recorded
   const [statsKey, setStatsKey] = useState(0)
 
@@ -254,6 +268,20 @@ export function FlipClock() {
     prevBreathingComplete.current = breathing.isComplete
   }, [breathing.isComplete, breathing.totalDuration, recordAndRefresh])
 
+  // Record deep work session on completion
+  const prevDeepWorkComplete = useRef(false)
+  useEffect(() => {
+    if (deepWork.isComplete && !prevDeepWorkComplete.current) {
+      recordAndRefresh({
+        task: currentTask || "Deep Work",
+        phase: "deepwork",
+        durationMinutes: Math.max(1, Math.round(deepWork.totalDuration / 60)),
+        completedAt: new Date().toISOString(),
+      })
+    }
+    prevDeepWorkComplete.current = deepWork.isComplete
+  }, [deepWork.isComplete, deepWork.totalDuration, recordAndRefresh, currentTask])
+
   // Save partial work session (reset/skip/mode-change while working)
   const savePartialSession = useCallback(() => {
     if (timer.mode !== "pomo" || timer.pomo.phase !== "work") return
@@ -279,25 +307,28 @@ export function FlipClock() {
     timer.skipPhase()
   }, [savePartialSession, timer])
 
-  const effectiveIsRunning = timer.mode === "breathing" ? breathing.isRunning : timer.isRunning
+  const effectiveIsRunning = timer.mode === "breathing" ? breathing.isRunning : timer.mode === "deepwork" ? deepWork.isRunning : timer.isRunning
 
   const effectiveToggle = useCallback(() => {
     if (timer.mode === "breathing") breathing.toggle()
+    else if (timer.mode === "deepwork") deepWork.toggle()
     else timer.toggleRunning()
-  }, [timer.mode, breathing.toggle, timer.toggleRunning])
+  }, [timer.mode, breathing.toggle, deepWork.toggle, timer.toggleRunning])
 
   const effectiveReset = useCallback(() => {
     if (timer.mode === "breathing") breathing.reset()
+    else if (timer.mode === "deepwork") deepWork.reset()
     else handleReset()
-  }, [timer.mode, breathing.reset, handleReset])
+  }, [timer.mode, breathing.reset, deepWork.reset, handleReset])
 
   const handleModeChange = useCallback(
     (mode: Mode) => {
       savePartialSession()
       if (timer.mode === "breathing") breathing.reset()
+      if (timer.mode === "deepwork") deepWork.reset()
       timer.setMode(mode)
     },
-    [savePartialSession, timer, breathing.reset]
+    [savePartialSession, timer, breathing.reset, deepWork.reset]
   )
 
   // Keep widget bridge taskRef in sync
@@ -549,7 +580,7 @@ export function FlipClock() {
   })
 
   // Swipe navigation between modes
-  const MODES: Mode[] = ["clock", "pomo", "stopwatch", "breathing"]
+  const MODES: Mode[] = ["clock", "pomo", "stopwatch", "breathing", "deepwork"]
   const [swipeAnim, setSwipeAnim] = useState<"left" | "right" | null>(null)
 
   const swipeToMode = useCallback(
@@ -724,8 +755,8 @@ export function FlipClock() {
           </div>
         )}
 
-        {/* Task list for Pomo mode */}
-        {timer.mode === "pomo" && !zoomed && (
+        {/* Task list for Pomo and Deep Work modes */}
+        {(timer.mode === "pomo" || timer.mode === "deepwork") && !zoomed && (
           <div data-tour="task" className={`w-full flex flex-col items-center gap-1.5 transition-opacity duration-500 ${zenHidden ? "opacity-0 pointer-events-none" : "opacity-100"}`}>
             {tasks.map((task, i) => (
               <div key={i} className="flex items-center gap-1.5" style={{ width: "clamp(172px, 30vw + 12px, 292px)" }}>
@@ -770,7 +801,7 @@ export function FlipClock() {
           data-card-style={cardStyle}
           className="relative flex flex-col items-center gap-5 sm:gap-8 transition-transform duration-300 origin-center"
           style={{
-            ...(zoomed && timer.mode !== "breathing" ? { transform: "scale(1.35)" } : {}),
+            ...(zoomed && timer.mode !== "breathing" && timer.mode !== "deepwork" ? { transform: "scale(1.35)" } : {}),
             ...(cardStyle === "custom" ? {
               "--custom-card-top-from": customCardColor,
               "--custom-card-top-to": `${customCardColor}dd`,
@@ -800,6 +831,24 @@ export function FlipClock() {
               colorB={theme.b}
               fpsMode={fpsMode}
               onDismissRecap={() => breathing.reset()}
+            />
+          ) : timer.mode === "deepwork" ? (
+            <DeepWorkFlame
+              stage={deepWork.stage}
+              stageLabel={deepWork.stageLabel}
+              progress={deepWork.progress}
+              isComplete={deepWork.isComplete}
+              isRunning={deepWork.isRunning}
+              elapsedTime={deepWork.elapsedTime}
+              pauseCount={deepWork.pauseCount}
+              totalPauseTime={deepWork.totalPauseTime}
+              totalDuration={deepWork.totalDuration}
+              maxStageReached={deepWork.maxStageReached}
+              taskName={currentTask}
+              colorA={theme.a}
+              colorB={theme.b}
+              fpsMode={fpsMode}
+              onDismissRecap={() => deepWork.reset()}
             />
           ) : (
             <>
@@ -919,6 +968,12 @@ export function FlipClock() {
             onBreathingDurationChange={setBreathingDuration}
             breathingHaptic={breathingHaptic}
             onBreathingHapticToggle={() => setBreathingHaptic((v) => !v)}
+            deepWorkTimedMode={deepWorkTimedMode}
+            onDeepWorkTimedModeToggle={() => setDeepWorkTimedMode((v: boolean) => !v)}
+            deepWorkDuration={deepWorkDuration}
+            onDeepWorkDurationChange={setDeepWorkDuration}
+            deepWorkHaptic={deepWorkHaptic}
+            onDeepWorkHapticToggle={() => setDeepWorkHaptic((v: boolean) => !v)}
           />
         </div>
       )}
