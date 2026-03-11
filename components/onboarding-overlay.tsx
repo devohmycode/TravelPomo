@@ -37,7 +37,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: "settings",
     title: "Settings",
-    description: "Configure durations, modes (Clock, Pomo, Stopwatch, Breathe), and preferences.",
+    description: "Configure durations, modes (Clock, Pomo, Timer, Breathe, Deep), and preferences.",
   },
   {
     target: "colors",
@@ -52,7 +52,7 @@ const TOUR_STEPS: TourStep[] = [
   {
     target: "stats",
     title: "Statistics",
-    description: "Track your focus sessions and breathing exercises over time.",
+    description: "Track your focus sessions, deep work, and breathing exercises over time.",
   },
   {
     target: "fullscreen",

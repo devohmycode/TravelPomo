@@ -21,6 +21,7 @@ import {
   getTaskStats,
   getDailyMinutesMap,
   getBreathingStats,
+  getDeepWorkStats,
   exportSessionsCSV,
   exportSessionsJSON,
   type Session,
@@ -176,6 +177,7 @@ export function StatsPanel({ onClose, themeA, themeB, isPro, onProNeeded, refres
   const [weeklyAvg, setWeeklyAvg] = useState(0)
   const [taskStats, setTaskStats] = useState<{ task: string; totalMinutes: number; sessionCount: number }[]>([])
   const [breathingStats, setBreathingStats] = useState({ totalMinutes: 0, sessionCount: 0 })
+  const [deepWorkStats, setDeepWorkStats] = useState({ totalMinutes: 0, sessionCount: 0, averageMinutes: 0, longestMinutes: 0 })
 
   // Chart
   const [chartView, setChartView] = useState<ChartView>("week")
@@ -197,6 +199,7 @@ export function StatsPanel({ onClose, themeA, themeB, isPro, onProNeeded, refres
     setWeeklyAvg(getWeeklyAverage())
     setTaskStats(getTaskStats())
     setBreathingStats(getBreathingStats())
+    setDeepWorkStats(getDeepWorkStats())
 
     try {
       const stored = localStorage.getItem("pomo-daily-goal")
@@ -478,6 +481,31 @@ export function StatsPanel({ onClose, themeA, themeB, isPro, onProNeeded, refres
             <div className="bg-white/8 rounded-xl p-3 text-center">
               <p className="text-xl font-bold text-white">{breathingStats.sessionCount}</p>
               <p className="text-white/50 text-xs mt-0.5">Sessions</p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Deep Work stats */}
+      {deepWorkStats.sessionCount > 0 && (
+        <div className="mb-5">
+          <p className="text-white/80 text-sm font-semibold mb-2">Deep Work</p>
+          <div className="grid grid-cols-2 gap-2">
+            <div className="bg-white/8 rounded-xl p-3 text-center">
+              <p className="text-xl font-bold text-white">{formatMinutesShort(deepWorkStats.totalMinutes)}</p>
+              <p className="text-white/50 text-xs mt-0.5">Total</p>
+            </div>
+            <div className="bg-white/8 rounded-xl p-3 text-center">
+              <p className="text-xl font-bold text-white">{deepWorkStats.sessionCount}</p>
+              <p className="text-white/50 text-xs mt-0.5">Sessions</p>
+            </div>
+            <div className="bg-white/8 rounded-xl p-3 text-center">
+              <p className="text-xl font-bold text-white">{deepWorkStats.averageMinutes}m</p>
+              <p className="text-white/50 text-xs mt-0.5">Average</p>
+            </div>
+            <div className="bg-white/8 rounded-xl p-3 text-center">
+              <p className="text-xl font-bold text-white">{deepWorkStats.longestMinutes}m</p>
+              <p className="text-white/50 text-xs mt-0.5">Longest</p>
             </div>
           </div>
         </div>
